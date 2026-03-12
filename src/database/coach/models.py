@@ -9,6 +9,8 @@ class Coach(SQLModel, table=True):
   last_updated : datetime
 
 class CoachAvailability(SQLModel, table=True):
+  __tablename__ = "coach_availability"
   id : int = Field(primary_key=True)
   is_weekly : bool
   last_updated : datetime
+
