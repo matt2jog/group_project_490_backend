@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 
 class Coach(SQLModel, table=True):
   __tablename__ = "coach"
@@ -19,7 +19,7 @@ class CoachExperience(SQLModel, table=True):
   __tablename__ = "coach_experience"
   id : int = Field(primary_key=True)
   coach_id : int = Field(foreign_key="coach.id")
-  experience_id : id = Field(foreign_key="experience.id")
+  experience_id : int = Field(foreign_key="experience.id")
   last_updated : datetime
 
 class Experience(SQLModel, table=True):
@@ -35,8 +35,8 @@ class Experience(SQLModel, table=True):
 class CoachCertifications(SQLModel, table=True):
   __tablename__ = "coach_certifications"
   id : int = Field(primary_key=True)
-  coach_id = int = Field(foreign_key="coach.id")
-  certification_id : int = Field(foreign_key="certification.id")
+  coach_id : int = Field(foreign_key="coach.id")
+  certification_id : int = Field(foreign_key="certifications.id")
   last_updated : datetime
 
 class Certifications(SQLModel, table=True):
