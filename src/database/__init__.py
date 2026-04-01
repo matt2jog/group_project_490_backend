@@ -1,5 +1,5 @@
 from src.database.base import SQLModelLU
-
+#needs to load into metadata for ORM to register them as tables (needs to tickle db @ remote b4 access)
 from src.database.account import models as _account_models
 from src.database.admin import models as _admin_models
 from src.database.client import models as _client_models
