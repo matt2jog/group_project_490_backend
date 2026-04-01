@@ -1,49 +1,46 @@
-from sqlmodel import SQLModel, Field
+from datetime import date, datetime
 from typing import Optional
-from datetime import datetime, date
 
-class Coach(SQLModel, table=True):
-  __tablename__ = "coach"
-  id : int = Field(primary_key=True)
-  verified : bool
-  coach_availability : Optional[int] = Field(foreign_key="coach_availability.id")
-  last_updated : datetime
+from sqlmodel import Field
 
-class CoachAvailability(SQLModel, table=True):
-  __tablename__ = "coach_availability"
-  id : int = Field(primary_key=True)
+from src.database.base import SQLModelLU
+
+class Coach(SQLModelLU, table=True):
+  __tablename__ = "coach"  # type: ignore
+  id : Optional[int] = Field(default=None, primary_key=True)
+  verified : bool = Field(default=False) #false in system flow, gets created as a request, needs admin approval
+  coach_availability : Optional[int] = Field(default=None, foreign_key="coach_availability.id")
+
+class CoachAvailability(SQLModelLU, table=True):
+  __tablename__ = "coach_availability"  # type: ignore
+  id : Optional[int] = Field(default=None, primary_key=True)
   is_weekly : bool
-  last_updated : datetime
 
-class CoachExperience(SQLModel, table=True):
-  __tablename__ = "coach_experience"
-  id : int = Field(primary_key=True)
+class CoachExperience(SQLModelLU, table=True):
+  __tablename__ = "coach_experience"  # type: ignore
+  id : Optional[int] = Field(default=None, primary_key=True)
   coach_id : int = Field(foreign_key="coach.id")
   experience_id : int = Field(foreign_key="experience.id")
-  last_updated : datetime
 
-class Experience(SQLModel, table=True):
-  __tablename__ = "experience"
-  id : int = Field(primary_key=True)
+class Experience(SQLModelLU, table=True):
+  __tablename__ = "experience"  # type: ignore
+  id : Optional[int] = Field(default=None, primary_key=True)
   experience_name : str
   experience_title : str
   experience_description : str
   experience_start: date
   experience_end : Optional[date]
-  last_updated : datetime
 
-class CoachCertifications(SQLModel, table=True):
-  __tablename__ = "coach_certifications"
-  id : int = Field(primary_key=True)
+class CoachCertifications(SQLModelLU, table=True):
+  __tablename__ = "coach_certifications"  # type: ignore
+  id : Optional[int] = Field(default=None, primary_key=True)
   coach_id : int = Field(foreign_key="coach.id")
   certification_id : int = Field(foreign_key="certifications.id")
-  last_updated : datetime
 
-class Certifications(SQLModel, table=True):
-  __tablename__ = "certifications"
-  id : int = Field(primary_key=True)
+class Certifications(SQLModelLU, table=True):
+  __tablename__ = "certifications"  # type: ignore
+  id : Optional[int] = Field(default=None, primary_key=True)
   certification_name : str
   certification_date : date
   certification_score : Optional[str]
   certification_organization: str
-  last_updated : datetime
