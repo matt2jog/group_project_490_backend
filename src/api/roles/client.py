@@ -8,11 +8,11 @@ from src.api.roles.domain import ClientDetails
 
 from src.database.session import get_session
 from src.database.account.models import Account
-from src.database.client.models import Client, FitnessGoals
+from src.database.client.models import Client, ClientAvailability
 
 router = APIRouter(prefix="/roles/client", tags=["client"])
 
-@router.post("/create_client_initial_survey", response_model=CreateClientResponse)
+@router.post("/initial_survey", response_model=CreateClientResponse)
 def create_coach_request(client_details: ClientDetails, db = Depends(get_session), acc: Account = Depends(get_account_from_bearer)):
     """
     Creates a client, modifies user account to show client_id=xxx
@@ -23,14 +23,16 @@ def create_coach_request(client_details: ClientDetails, db = Depends(get_session
     #client err thrown in DI scope
     if acc.coach_id is not None:
         raise HTTPException(409, detail="Cannot create a request for a coach role when one is open, or the role is given")
-    #TODO add availability
+
     db.add(client_details.payment_information)
+    for a in client_details.availabilities:
+        db.add(a)
 
     db.flush()
 
     client = Client(payment_information_id=client_details.payment_information.id) # type: ignore
     db.add(client)
-
+    db.add(ClientAvailability())
     db.flush()
 
     client_details.fitness_goals.client_id = client.id # type: ignore

@@ -20,7 +20,8 @@ class CoachDetails(BaseModel): #used for CRUD, mapping layer doesn't concern wit
 #Client
 from src.database.client.models import FitnessGoals
 from src.database.payment.models import PaymentInformation
+from src.database.account.models import Availability
 class ClientDetails(BaseModel):
     fitness_goals: FitnessGoals
     payment_information: PaymentInformation
-    #TODO add availability
+    availabilities: List[Availability]

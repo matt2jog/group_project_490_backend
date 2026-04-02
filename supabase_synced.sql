@@ -269,7 +269,7 @@ CREATE TABLE "public"."client_availability" (
 
 CREATE TABLE "public"."availability" (
     "id" bigint NOT NULL,
-    "weekday_id" bigint NOT NULL,
+    "weekday" TEXT NOT NULL,
     "start_time" timetz NOT NULL,
     "end_time" timetz NOT NULL,
     "max_time_commitment_seconds" decimal(8, 2),

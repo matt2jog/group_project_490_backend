@@ -1,7 +1,8 @@
-from sqlmodel import SQLModel, Field
+from sqlmodel import Field
+from decimal import Decimal
 from typing import Optional
-from datetime import datetime
-
+from datetime import datetime, time
+from enum import Enum
 from src.database.base import SQLModelLU
 
 class Account(SQLModelLU, table=True):
@@ -27,3 +28,24 @@ class Account(SQLModelLU, table=True):
   admin_id: Optional[int] = Field(default=None, foreign_key="admin.id")
 
   created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+
+  
+class Weekday(Enum):
+   MONDAY = "monday"
+   TUESDAY = "tuesday"
+   WEDNESDAY = "wednesday"
+   THURSDAY = "thursday"
+   FRIDAY = "friday"
+   SATURDAY = "saturday"
+   SUNDAY = "sunday"
+
+class Availability(SQLModelLU, table=True):
+    __tablename__ = "availability"  # type: ignore
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    weekday: Weekday
+    start_time: time
+    end_time: time
+    max_time_commitment_seconds: Optional[Decimal] = Field(default=None, max_digits=8, decimal_places=2)
+    client_availability_id: Optional[int] = Field(default=None, foreign_key="client_availability.id")
+    coach_availability_id: Optional[int] = Field(default=None, foreign_key="coach_availability.id")

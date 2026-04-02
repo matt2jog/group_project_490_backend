@@ -1,47 +1,71 @@
-from sqlmodel import Field
-from typing import Optional
+from datetime import time
+from decimal import Decimal
 from enum import Enum
+from typing import Optional
+
+from sqlmodel import Field
+
 from src.database.base import SQLModelLU
 
-class WorkoutType(Enum):
+
+class WorkoutType(str, Enum):
     REPETITION_BASED = "rep"
     DURATION_BASED = "duration"
 
 
-class Equiptment(SQLModelLU):
-    __tablename__ = "equiptment" # type: ignore
-    
-    id: int
+class Equiptment(SQLModelLU, table=True):
+    __tablename__ = "equiptment"  # type: ignore
+
+    id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    description: str
+    description: Optional[str] = None
 
-class WorkoutEquiptment(SQLModelLU):
-    __tablename__ = "workout_equiptment" # type: ignore
-    
-    id: int
-    workout_id: int = Field(foreign_key="workout.id")
+
+class WorkoutEquiptment(SQLModelLU, table=True):
+    __tablename__ = "workout_equiptment"  # type: ignore
+
+    id: Optional[int] = Field(default=None, primary_key=True)
     equiptment_id: int = Field(foreign_key="equiptment.id")
+    workout_id: int = Field(foreign_key="workout.id")
     is_required: bool = Field(default=True)
-    is_recomended: bool = Field(default=True)
+    is_recommended: bool = Field(default=True)
 
-class Workout(SQLModelLU):
-    __tablename__ = "workout" # type: ignore
-    
-    id: int
+
+class Workout(SQLModelLU, table=True):
+    __tablename__ = "workout"  # type: ignore
+
+    id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     description: str
     instructions: str
-    workout_type: WorkoutType # str-based enum
-
-class WorkoutActivity(SQLModelLU):
-    __tablename__ = "workout_activity" # type: ignore
+    workout_type: WorkoutType
 
 
-class WorkoutPlan(SQLModelLU):
-    __tablename__ = "workout_plan" # type: ignore
+class WorkoutActivity(SQLModelLU, table=True):
+    __tablename__ = "workout_activity"  # type: ignore
 
-class WorkoutPlanActivity(SQLModelLU):
-    __tablename__ = "workout_plan_activity" # type: ignore
+    id: Optional[int] = Field(default=None, primary_key=True)
+    workout_id: int = Field(foreign_key="workout.id")
+    intensity_measure: Optional[str] = None
+    intensity_value: Optional[int] = None
+    estimated_calories_per_unit_frequency: Decimal = Field(max_digits=10, decimal_places=6)
 
-class Availability(SQLModelLU):
-    __tablename__ = "activity" # type: ignore
+
+class WorkoutPlan(SQLModelLU, table=True):
+    __tablename__ = "workout_plan"  # type: ignore
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    strata_name: str # this is the name of the grouping for workout_plan_activities
+
+
+class WorkoutPlanActivity(SQLModelLU, table=True):
+    __tablename__ = "workout_plan_activity"  # type: ignore
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    workout_plan_id: int = Field(foreign_key="workout_plan.id")
+    workout_activity_id: int = Field(foreign_key="workout_activity.id")
+    estimated_calories: Decimal = Field(max_digits=4, decimal_places=2)
+    modified_by_account_id: int = Field(foreign_key="account.id")
+    planned_duration: Optional[int] = None
+    planned_reps: Optional[int] = None
+    planned_sets: Optional[int] = None
