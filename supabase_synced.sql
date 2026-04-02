@@ -262,7 +262,6 @@ CREATE TABLE "public"."workout_plan_activity" (
 
 CREATE TABLE "public"."client_availability" (
     "id" bigint NOT NULL,
-    "is_weekly" boolean NOT NULL,
     "last_updated" timestamptz NOT NULL,
     CONSTRAINT "pk_table_32_id" PRIMARY KEY ("id")
 );
@@ -281,7 +280,6 @@ CREATE TABLE "public"."availability" (
 
 CREATE TABLE "public"."coach_availability" (
     "id" bigint NOT NULL,
-    "is_weekly" boolean NOT NULL,
     "last_updated" timestamptz NOT NULL,
     CONSTRAINT "pk_table_34_id" PRIMARY KEY ("id")
 );

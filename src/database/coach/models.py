@@ -14,7 +14,6 @@ class Coach(SQLModelLU, table=True):
 class CoachAvailability(SQLModelLU, table=True):
   __tablename__ = "coach_availability"  # type: ignore
   id : Optional[int] = Field(default=None, primary_key=True)
-  is_weekly : bool
 
 class CoachExperience(SQLModelLU, table=True):
   __tablename__ = "coach_experience"  # type: ignore
