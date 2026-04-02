@@ -26,6 +26,8 @@ class WorkoutEquiptment(SQLModelLU):
 
 class Workout(SQLModelLU):
     __tablename__ = "workout" # type: ignore
+    
+    id: int
     name: str
     description: str
     instructions: str
@@ -33,6 +35,7 @@ class Workout(SQLModelLU):
 
 class WorkoutActivity(SQLModelLU):
     __tablename__ = "workout_activity" # type: ignore
+
 
 class WorkoutPlan(SQLModelLU):
     __tablename__ = "workout_plan" # type: ignore

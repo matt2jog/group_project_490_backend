@@ -233,7 +233,7 @@ CREATE TABLE "public"."workout" (
 CREATE TABLE "public"."workout_activity" (
     "id" bigint NOT NULL,
     "workout_id" bigint NOT NULL,
-    "intensity_measure" bigint,
+    "intensity_measure" TEXT,
     "intensity_value" bigint,
     "estimated_calories_per_unit_frequency" decimal(10, 6) NOT NULL,
     "last_updated" timestamptz NOT NULL,
