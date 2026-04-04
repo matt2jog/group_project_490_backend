@@ -1,0 +1,1 @@
+from src.database.telemetry import models as _telemetry_models

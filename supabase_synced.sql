@@ -49,7 +49,7 @@ CREATE TABLE "public"."role_promotion_resolution" (
     "id" bigint NOT NULL,
     "admin_id" bigint NOT NULL,
     "account_id" bigint NOT NULL,
-    "role_id" bigint NOT NULL,
+    "role" TEXT NOT NULL,
     "is_approved" boolean NOT NULL,
     "last_updated" timestamptz NOT NULL,
     CONSTRAINT "pk_role_promotion_resolution_id" PRIMARY KEY ("id")
@@ -148,13 +148,6 @@ CREATE TABLE "public"."client" (
     CONSTRAINT "pk_client_id" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "public"."roles" (
-    "id" bigint NOT NULL,
-    "name" text NOT NULL,
-    "last_updated" timestamptz NOT NULL,
-    CONSTRAINT "pk_roles_id" PRIMARY KEY ("id")
-);
-
 CREATE TABLE "public"."account" (
     "id" bigint NOT NULL,
     "coach_id" bigint,
@@ -225,7 +218,7 @@ CREATE TABLE "public"."workout" (
     "name" text NOT NULL,
     "description" text NOT NULL,
     "instructions" text NOT NULL,
-    "workout_type_id" bigint NOT NULL,
+    "workout_type" text NOT NULL,
     "last_updated" timestamptz NOT NULL,
     CONSTRAINT "pk_table_26_id" PRIMARY KEY ("id")
 );
@@ -233,19 +226,11 @@ CREATE TABLE "public"."workout" (
 CREATE TABLE "public"."workout_activity" (
     "id" bigint NOT NULL,
     "workout_id" bigint NOT NULL,
-    "intensity_measure" bigint,
+    "intensity_measure" TEXT,
     "intensity_value" bigint,
     "estimated_calories_per_unit_frequency" decimal(10, 6) NOT NULL,
     "last_updated" timestamptz NOT NULL,
     CONSTRAINT "pk_table_27_id" PRIMARY KEY ("id")
-);
-
-CREATE TABLE "public"."workout_type" (
-    "id" bigint NOT NULL,
-    "is_duration_based" boolean NOT NULL,
-    "is_rep_based" boolean NOT NULL,
-    "last_updated" timestamptz NOT NULL,
-    CONSTRAINT "pk_table_28_id" PRIMARY KEY ("id")
 );
 
 CREATE TABLE "public"."workout_plan" (
@@ -270,14 +255,13 @@ CREATE TABLE "public"."workout_plan_activity" (
 
 CREATE TABLE "public"."client_availability" (
     "id" bigint NOT NULL,
-    "is_weekly" boolean NOT NULL,
     "last_updated" timestamptz NOT NULL,
     CONSTRAINT "pk_table_32_id" PRIMARY KEY ("id")
 );
 
 CREATE TABLE "public"."availability" (
     "id" bigint NOT NULL,
-    "weekday_id" bigint NOT NULL,
+    "weekday" TEXT NOT NULL,
     "start_time" timetz NOT NULL,
     "end_time" timetz NOT NULL,
     "max_time_commitment_seconds" decimal(8, 2),
@@ -289,7 +273,6 @@ CREATE TABLE "public"."availability" (
 
 CREATE TABLE "public"."coach_availability" (
     "id" bigint NOT NULL,
-    "is_weekly" boolean NOT NULL,
     "last_updated" timestamptz NOT NULL,
     CONSTRAINT "pk_table_34_id" PRIMARY KEY ("id")
 );
@@ -462,9 +445,7 @@ ALTER TABLE "public"."invoice" ADD CONSTRAINT "fk_invoice_client_id_client_id" F
 ALTER TABLE "public"."pricing_plan" ADD CONSTRAINT "fk_pricing_plan_coach_id_coach_id" FOREIGN KEY("coach_id") REFERENCES "public"."coach"("id");
 ALTER TABLE "public"."billing_cycle" ADD CONSTRAINT "fk_billing_cycle_pricing_plan_id_pricing_plan_id" FOREIGN KEY("pricing_plan_id") REFERENCES "public"."pricing_plan"("id") ON DELETE CASCADE;
 ALTER TABLE "public"."role_promotion_resolution" ADD CONSTRAINT "fk_role_promotion_resolution_admin_id_admin_id" FOREIGN KEY("admin_id") REFERENCES "public"."admin"("id");
-ALTER TABLE "public"."role_promotion_resolution" ADD CONSTRAINT "fk_role_promotion_resolution_role_id_roles_id" FOREIGN KEY("role_id") REFERENCES "public"."roles"("id");
 ALTER TABLE "public"."role_promotion_resolution" ADD CONSTRAINT "fk_role_promotion_resolution_account_id_account_id" FOREIGN KEY("account_id") REFERENCES "public"."account"("id");
-ALTER TABLE "public"."workout" ADD CONSTRAINT "fk_workout_workout_type_id_workout_type_id" FOREIGN KEY("workout_type_id") REFERENCES "public"."workout_type"("id");
 ALTER TABLE "public"."workout_activity" ADD CONSTRAINT "fk_workout_activity_workout_id_workout_id" FOREIGN KEY("workout_id") REFERENCES "public"."workout"("id") ON DELETE CASCADE;
 ALTER TABLE "public"."workout_plan_activity" ADD CONSTRAINT "fk_workout_plan_activity_workout_activity_id_workout_activit" FOREIGN KEY("workout_activity_id") REFERENCES "public"."workout_activity"("id") ON DELETE CASCADE;
 ALTER TABLE "public"."workout_plan_activity" ADD CONSTRAINT "fk_workout_plan_activity_workout_plan_id_workout_plan_id" FOREIGN KEY("workout_plan_id") REFERENCES "public"."workout_plan"("id") ON DELETE CASCADE;
@@ -524,7 +505,6 @@ CREATE INDEX idx_coach_experience_coach_id ON "public"."coach_experience"("coach
 CREATE INDEX idx_coach_experience_experience_id ON "public"."coach_experience"("experience_id");
 CREATE INDEX idx_fitness_goals_client_id ON "public"."fitness_goals"("client_id");
 CREATE INDEX idx_billing_cycle_pricing_plan_id ON "public"."billing_cycle"("pricing_plan_id");
-CREATE INDEX idx_workout_workout_type_id ON "public"."workout"("workout_type_id");
 CREATE INDEX idx_workout_activity_workout_id ON "public"."workout_activity"("workout_id");
 CREATE INDEX idx_workout_plan_activity_workout_activity_id ON "public"."workout_plan_activity"("workout_activity_id");
 CREATE INDEX idx_workout_plan_activity_workout_plan_id ON "public"."workout_plan_activity"("workout_plan_id");

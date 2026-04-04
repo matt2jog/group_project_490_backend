@@ -8,3 +8,6 @@ from src.database.coach_client_relationship import models as _coach_client_relat
 from src.database.payment import models as _payment_models
 from src.database.reports import models as _reports_models
 from src.database.role_management import models as _role_management_models
+from src.database.telemetry import models as _telemetry_models
+from src.database.workouts_and_activities import models as _workout_models
+from src.database.meal import models as _meal_models
