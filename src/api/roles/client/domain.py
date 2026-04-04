@@ -15,10 +15,10 @@ class InitialSurveyInput(BaseModel): #creates a client
     initial_health_metric: HealthMetrics
 
 class UpdateClientInfoInput(BaseModel):
-    fitness_goals: Optional[FitnessGoals] #reset fitness goals
-    payment_information: Optional[PaymentInformation] #reset pmt info
-    availabilities: Optional[List[Availability]] #new availabilities
-    health_metrics: Optional[HealthMetrics]
+    fitness_goals: Optional[FitnessGoals] = Field(default=None) #reset fitness goals
+    payment_information: Optional[PaymentInformation] = Field(default=None) #reset pmt info
+    availabilities: Optional[List[Availability]] = Field(default=None) #new availabilities
+    health_metrics: Optional[HealthMetrics] = Field(default=None)
 
     @model_validator(mode="after") #runs after model is validated from typing standards
     def ensure_not_empty(self):

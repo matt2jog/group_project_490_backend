@@ -18,7 +18,7 @@ class RolePromotionResolution(SQLModelLU, table=True):
   id : Optional[int] = Field(default=None, primary_key=True)
   role : Roles
   admin_id : int = Field(foreign_key="admin.id")
-  client_id : int = Field(foreign_key="client.id")
+  account_id : int = Field(foreign_key="account.id")
   is_approved : bool
 
 class CoachRequest(SQLModelLU, table=True):

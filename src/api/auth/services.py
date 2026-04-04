@@ -10,7 +10,7 @@ def hash_password(password: str) -> str:
     return sha256(salted).hexdigest()
 
 def create_account(payload: SignupRequest) -> Account:
-    account_data = payload.dict(exclude_none=True, exclude={"password"})
+    account_data = payload.model_dump(exclude_none=True, exclude={"password"})
     account_data["hashed_password"] = hash_password(payload.password)
     return Account(**account_data)
 
