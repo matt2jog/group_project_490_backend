@@ -32,3 +32,33 @@ def test_client_me_endpoint(test_client, client_auth_header):
     client_me_data = client_me_response.json()
     assert "@example.com" in client_me_data["base_account"]["email"]
     assert isinstance(client_me_data["client_account"]["id"], int)
+
+def test_client_update_information(test_client, client_auth_header):
+    update_payload = {
+        "fitness_goals": {
+            "goal_enum": "muscle gain"
+        }
+    }
+
+    update_response = test_client.post(
+        "/roles/client/update_client_information",
+        json=update_payload,
+        headers=client_auth_header,
+    )
+
+    assert update_response.status_code == 200
+
+def test_client_delete_profile(test_client, client_auth_header):
+    delete_response = test_client.delete(
+        "/roles/client/delete_client_profile",
+        headers=client_auth_header,
+    )
+
+    assert delete_response.status_code == 200
+
+    me_response = test_client.post(
+        "/roles/client/me",
+        headers=client_auth_header,
+    )
+
+    assert me_response.status_code in [401, 403, 404]
