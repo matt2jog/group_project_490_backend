@@ -11,7 +11,7 @@ from src.database.session import get_session
 from src.database.account.models import Account
 from src.database.client.models import Client, ClientAvailability, FitnessGoals
 from src.database.payment.models import PaymentInformation
-from src.database.telemetry.models import ClientTelemetry
+from src.database.telemetry.models import ClientTelemetry, HealthMetrics
 
 router = APIRouter(prefix="/roles/client", tags=["client"])
 
@@ -141,25 +141,41 @@ def delete_client_profile(db = Depends(get_session), acc: Account = Depends(get_
     if client is None:
         raise HTTPException(404, detail="Client profile not found")
 
-    payment_info = None
-    if client.payment_information_id is not None:
-        payment_info = db.get(PaymentInformation, client.payment_information_id)
+    fitness_goals = db.exec(
+        select(FitnessGoals).where(FitnessGoals.client_id == client.id)
+    ).all()
 
-    availability = None
-    if client.client_availability_id is not None:
-        availability = db.get(ClientAvailability, client.client_availability_id)
+    telemetry_rows = db.exec(
+        select(ClientTelemetry).where(ClientTelemetry.client_id == client.id)
+    ).all()
+
+    health_metrics_rows = db.exec(
+        select(HealthMetrics).where(
+            HealthMetrics.client_telemetry_id.in_(
+                [t.id for t in telemetry_rows if t.id is not None]
+            )
+        )
+    ).all()
 
     acc.client_id = None
     db.add(acc)
 
-    db.delete(client)
+    for goal in fitness_goals:
+        db.delete(goal)
+
     db.flush()
 
-    if payment_info is not None:
-        db.delete(payment_info)
+    for metric in health_metrics_rows:
+        db.delete(metric)
 
-    if availability is not None:
-        db.delete(availability)
+    db.flush()
+
+    for telem in telemetry_rows:
+        db.delete(telem)
+
+    db.flush()
+
+    db.delete(client)
     db.commit()
 
     return DunderResponse()
