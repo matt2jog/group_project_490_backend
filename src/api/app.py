@@ -1,5 +1,7 @@
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from src import config
 from src.api.dependencies import get_account_from_bearer
 from src.api.auth.services import serialize_account
 
@@ -13,6 +15,14 @@ from src.api.roles.client.client import router as client_router
 
 app = FastAPI(title="Group 6 490 Project API")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=config.CORS_ALLOWED_ORIGINS or ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(auth_router)  # includes login, signup, and token routes
 app.include_router(coach_router)
 app.include_router(client_router)
@@ -21,6 +31,10 @@ app.include_router(client_router)
 def read_current_user(user = Depends(get_account_from_bearer)):
     return serialize_account(user)
 
+@app.get("/")
+def health():
+    return
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, port=9090)    
+    uvicorn.run(app, host="0.0.0.0", port=9090)    
