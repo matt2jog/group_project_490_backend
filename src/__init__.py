@@ -1,5 +1,5 @@
+import json
 import os
-from dataclasses import dataclass
 from dotenv import load_dotenv
 from sqlmodel import create_engine
 
@@ -8,6 +8,21 @@ load_dotenv(ENV_LOCATION := os.path.abspath(
 ))
 
 print(f"Loaded dotenv @ {ENV_LOCATION}")
+
+CORS_ALLOWED_ORIGINS = []
+
+try:
+    cors_raw = os.getenv("CORS_ALLOWED_ORIGINS", "").strip().strip("'\"")
+    if cors_raw:
+        if cors_raw.startswith("["):
+            CORS_ALLOWED_ORIGINS = json.loads(cors_raw)
+            if not isinstance(CORS_ALLOWED_ORIGINS, list):
+                raise ValueError("CORS_ALLOWED_ORIGINS must be a JSON array")
+        else:
+            CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_raw.split(",") if origin.strip()]
+
+except json.JSONDecodeError:
+    raise Exception("CORS_ALLOWED_ORIGINS not proper JSON")
 
 if (db_conn_str := os.getenv("DATABASE_URL", None)) is None:
     raise Exception("Error, no database connection string found")
@@ -32,14 +47,13 @@ try:
 except Exception as e:
     print(f"Database connection failed: {e}")   
 
-@dataclass
 class config:
     DATABASE_URL: str = db_conn_str
     
     PASSWORD_SALT: str = pass_salt
     JWT_SECRET: str = jwt_secret
     ALGORITHM: str = jwt_algorithm
-
+    CORS_ALLOWED_ORIGINS: list[str] = CORS_ALLOWED_ORIGINS
     GCP_CLIENT_ID: str = gcp_client_id
 
 print("Config loaded successfully!\n\n")
