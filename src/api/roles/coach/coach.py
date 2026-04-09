@@ -68,7 +68,7 @@ def create_coach_request(coach_details: CoachRequestInput, db = Depends(get_sess
 
 # Updating coach request , which includes coach availability, experience, and certifications.
 @router.patch("/update_coach_info", response_model=UpdateCoachInfoResponse)
-def update_coach_request(new_coach_details: UpdateCoachInfoInput, db = Depends(get_session), coach_acc: Account = Depends(get_coach_account)):
+def update_coach_info(new_coach_details: UpdateCoachInfoInput, db = Depends(get_session), coach_acc: Account = Depends(get_coach_account)):
     """
     Updates coach request information, including certifications, experiences, and availability
     Deletes existing certs, exps, and availabilities and replaces with new ones if the user provides them, otherwise leaves them as is
