@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional
 from fastapi import HTTPException
@@ -6,6 +8,7 @@ from fastapi import HTTPException
 #Coach
 from src.database.coach.models import Experience, Certifications, Coach
 from src.database.account.models import Availability, Account
+from src.database.workouts_and_activities.models import Equiptment, WorkoutPlanActivity, WorkoutType
 class CoachRequestInput(BaseModel): #used for CRUD, mapping layer doesn't concern with mapping data->entities
     availabilities: List[Availability]
     experiences: List[Experience]
@@ -22,6 +25,27 @@ class ClientCoachRequestInput(BaseModel):
     client_id: int
     coach_id: int
 
+class CoachDeniedRequestInput(BaseModel):
+    coach_id: int
+    is_accepted: bool = False
+
+class WorkoutInput(BaseModel):
+    name: str
+    description: str
+    instructions: str
+    workout_type: WorkoutType
+    equipment: Optional[List[Equiptment]]
+
+class WorkoutActivityInput(BaseModel):
+    workout_id: int
+    intensity_measure: Optional[str] = None
+    intensity_value: Optional[int] = None
+    estimated_calories_per_unit_frequency: Decimal = Field(max_digits=10, decimal_places=6)
+
+
+class WorkoutPlanInput(BaseModel):
+    strata_name: str
+    workout_activities: Optional[List[WorkoutPlanActivity]] = Field(default=None)
 
 #Responses
 class DunderResponse(BaseModel):
