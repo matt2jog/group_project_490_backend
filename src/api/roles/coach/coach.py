@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends
-from src.api.roles.coach.domain import CreateCoachRequestResponse, UpdateCoachInfoResponse, CoachRequestDeniedResponse, AcceptedClientResponse
-from src.api.dependencies import get_coach_account, get_client_account
+from src.api.roles.coach.domain import CreateCoachRequestResponse, UpdateCoachInfoResponse, CoachRequestDeniedResponse, AcceptedClientResponse, WorkoutPlanInput
+from src.api.dependencies import get_coach_account, get_client_account, get_admin_account
 
 #models
-from src.api.roles.coach.domain import CoachRequestInput, CoachAccountResponse, DunderResponse, UpdateCoachInfoInput, ClientCoachRequestInput
+from src.api.roles.coach.domain import CoachDeniedRequestInput, CoachRequestInput, CoachAccountResponse, DunderResponse, UpdateCoachInfoInput, ClientCoachRequestInput, WorkoutInput, WorkoutActivityInput
 
-
+from src.database.workouts_and_activities.models import Workout, WorkoutEquiptment, WorkoutActivity, WorkoutPlan, WorkoutPlanActivity
 from src.database.coach_client_relationship.models import ClientCoachRequest
 from src.database.session import get_session
 from src.database.account.models import Account, Availability
@@ -109,21 +109,22 @@ def update_coach_info(new_coach_details: UpdateCoachInfoInput, db = Depends(get_
     return UpdateCoachInfoResponse(coach_id=coach.id) # type: ignore
 
 @router.delete("/coach_request_denied", response_model=CoachRequestDeniedResponse)
-def coach_request_denied(db = Depends(get_session), acc: Account = Depends(get_coach_account)):
+def coach_request_denied(coach_request_info :CoachDeniedRequestInput, db = Depends(get_session), acc: Account = Depends(get_admin_account)):
     """
     Deletes coach request, coach record, certs, exps, and avails, and sets user account coach_id to null
     Errors when user does not have a coach_id
     """
-    if acc.coach_id is None:
-        raise HTTPException(404, detail="No coach profile found for this account")
+    if acc.admin_id is None:
+        raise HTTPException(404, detail="You must be an admin to perform this action")
     
-    db.query(Coach).filter(Coach.id == acc.coach_id).delete(synchronize_session=False)
+    
 
-    acc.coach_id = None
+    db.query(Coach).filter(Coach.id == coach_request_info.coach_id).delete(synchronize_session=False)
+    db.query(CoachRequest).filter(CoachRequest.coach_id == coach_request_info.coach_id).delete(synchronize_session=False)
     
     db.commit()
 
-    return CoachRequestDeniedResponse(coach_id=acc.coach_id) # type: ignore
+    return CoachRequestDeniedResponse(coach_id=None) # type: ignore
 
 @router.post("/me", response_model=CoachAccountResponse)
 def me(db = Depends(get_session), acc: Account = Depends(get_coach_account)):
@@ -131,6 +132,85 @@ def me(db = Depends(get_session), acc: Account = Depends(get_coach_account)):
         base_account=acc,
         coach_account=db.get(Coach, acc.coach_id)
     )
+
+@router.post("/create_workout", response_model=DunderResponse)
+def create_workout(workout_details: WorkoutInput, db = Depends(get_session), acc: Account = Depends(get_coach_account)):
+    """
+    Creates a workout and attaches equiptment if provided
+    Errors when user does not have a coach_id
+    """
+    if acc.coach_id is None:
+        raise HTTPException(404, detail="No coach profile found for this account")
+    
+    workout = Workout(
+        name=workout_details.name,
+        description=workout_details.description,
+        instructions=workout_details.instructions,
+        workout_type=workout_details.workout_type
+    )
+
+    db.add(workout)
+    db.flush()
+
+    if workout_details.equipment is not None:
+        for e in workout_details.equipment:
+            db.add(e)
+            db.flush()
+            db.add(WorkoutEquiptment(workout_id=workout.id, equiptment_id=e.id)) # type: ignore
+
+    db.commit()
+
+    return DunderResponse()
+
+
+@router.post("/create_workout_activity", response_model=DunderResponse)
+def create_workout_activity(activity_details: WorkoutActivityInput, db = Depends(get_session), acc: Account = Depends(get_coach_account)):
+    """
+    Creates a workout activity and attaches it to a workout
+    Errors when user does not have a coach_id
+    """
+    if acc.coach_id is None:
+        raise HTTPException(404, detail="No coach profile found for this account")
+
+    activity = WorkoutActivity(
+        workout_id=activity_details.workout_id,
+        intensity_measure=activity_details.intensity_measure,
+        intensity_value=activity_details.intensity_value,
+        estimated_calories_per_unit_frequency=activity_details.estimated_calories_per_unit_frequency
+    )
+
+    db.add(activity)
+    db.flush()
+    db.commit()
+
+    return DunderResponse()
+
+@router.post("/create_workout_plan", response_model=DunderResponse)
+def create_workout_plan(plan_details: WorkoutPlanInput, db = Depends(get_session), acc: Account = Depends(get_coach_account)):
+    """
+    Creates a workout plan and attaches workout activities if provided
+    Errors when user does not have a coach_id
+    """
+    if acc.coach_id is None:
+        raise HTTPException(404, detail="No coach profile found for this account")
+
+    plan = WorkoutPlan(
+        strata_name=plan_details.strata_name
+    )
+
+    db.add(plan)
+    db.flush()
+
+    if plan_details.workout_activities is not None:
+        for activity in plan_details.workout_activities:
+            db.add(activity)
+            db.flush()
+            db.add(WorkoutPlanActivity(workout_plan_id=plan.id, workout_activity_id=activity.id)) # type: ignore
+
+    db.commit()
+
+    return DunderResponse()
+
 
 @router.post("/accept_client_request", response_model=AcceptedClientResponse)
 def accept_client_request(request_input : ClientCoachRequestInput, db = Depends(get_session), acc: Account = Depends(get_client_account)):
