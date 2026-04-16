@@ -126,6 +126,38 @@ def test_errors_on_invalid_data(test_client, coach_auth_header):
     plan_payload = build_create_plan_payload(workout_activity_id=99999)
     resp4 = test_client.post("/roles/shared/fitness/create/plan", json=plan_payload, headers=coach_auth_header)
     assert resp4.status_code == 404
+    
+    # Workout Plan Validation Failure: Both duration and sets/reps provided
+    plan_payload = build_create_plan_payload(workout_activity_id=1) 
+    plan_payload["activities"][0]["planned_duration"] = 60
+    plan_payload["activities"][0]["planned_reps"] = 10
+    plan_payload["activities"][0]["planned_sets"] = 3
+    resp5 = test_client.post("/roles/shared/fitness/create/plan", json=plan_payload, headers=coach_auth_header)
+    assert resp5.status_code == 422
+    
+    # Workout Plan Validation Failure: Neither duration nor sets/reps provided
+    plan_payload = build_create_plan_payload(workout_activity_id=1) 
+    plan_payload["activities"][0]["planned_duration"] = None
+    plan_payload["activities"][0]["planned_reps"] = None
+    plan_payload["activities"][0]["planned_sets"] = None
+    resp6 = test_client.post("/roles/shared/fitness/create/plan", json=plan_payload, headers=coach_auth_header)
+    assert resp6.status_code == 422
+    
+    # Workout Plan Validation Failure: Both duration and sets/reps provided
+    plan_payload = build_create_plan_payload(workout_activity_id=1) 
+    plan_payload["activities"][0]["planned_duration"] = 60
+    plan_payload["activities"][0]["planned_reps"] = 10
+    plan_payload["activities"][0]["planned_sets"] = 3
+    resp5 = test_client.post("/roles/shared/fitness/create/plan", json=plan_payload, headers=coach_auth_header)
+    assert resp5.status_code == 422
+    
+    # Workout Plan Validation Failure: Neither duration nor sets/reps provided
+    plan_payload = build_create_plan_payload(workout_activity_id=1) 
+    plan_payload["activities"][0]["planned_duration"] = None
+    plan_payload["activities"][0]["planned_reps"] = None
+    plan_payload["activities"][0]["planned_sets"] = None
+    resp6 = test_client.post("/roles/shared/fitness/create/plan", json=plan_payload, headers=coach_auth_header)
+    assert resp6.status_code == 422
 
 def test_coach_can_create_workout_and_upsert_equiptment(test_client, coach_auth_header):
     payload = build_create_workout_payload(equipment=[{"name": "Kettlebell", "description": "15 lbs", "is_required": True, "is_recommended": True}])

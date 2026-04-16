@@ -20,6 +20,13 @@ def create_workout(
     db: Session = Depends(get_session),
     acc: Account = Depends(get_coach_account)
 ):
+    """
+    when equipment_id is provided, will reference existing equipment, highly recommended to avoid duplicates
+    use the /query/equipment endpoint to find equipment ids
+
+    passing by name wto id makes a new record
+    """
+    
     try:
         workout_type = WorkoutType(payload.workout_type)
     except ValueError:
