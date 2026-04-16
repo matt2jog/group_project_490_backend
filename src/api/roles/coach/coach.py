@@ -1,10 +1,13 @@
+from datetime import date
+
 from fastapi import APIRouter, HTTPException, Depends
-from src.api.roles.coach.domain import CreateCoachRequestResponse, UpdateCoachInfoResponse, CoachRequestDeniedResponse, AcceptedClientResponse, WorkoutPlanInput
+from src.api.roles.coach.domain import CoachAvailabilityResponse, CreateCoachRequestResponse, UpdateCoachInfoResponse, CoachRequestDeniedResponse, AcceptedClientResponse, WorkoutPlanInput
 from src.api.dependencies import get_coach_account, get_client_account, get_admin_account
 
 #models
 from src.api.roles.coach.domain import CoachDeniedRequestInput, CoachRequestInput, CoachAccountResponse, DunderResponse, UpdateCoachInfoInput, ClientCoachRequestInput, WorkoutInput, WorkoutActivityInput
 
+from src.database import coach
 from src.database.workouts_and_activities.models import Workout, WorkoutEquiptment, WorkoutActivity, WorkoutPlan, WorkoutPlanActivity
 from src.database.coach_client_relationship.models import ClientCoachRequest
 from src.database.session import get_session
@@ -210,6 +213,25 @@ def create_workout_plan(plan_details: WorkoutPlanInput, db = Depends(get_session
     db.commit()
 
     return DunderResponse()
+
+@router.get("/coach_availability/{coach_id}", response_model=CoachAvailabilityResponse)
+def get_coach_availability(coach_id: int, db = Depends(get_session), acc: Account = Depends(get_client_account)):
+    """
+    Gets coach availability for a given coach
+    """
+    if acc.client_id is None:
+        raise HTTPException(404, detail="Please log in to view coach availability")
+    
+    coach = db.get(Coach, coach_id)
+    if coach is None:
+        raise HTTPException(404, detail="Coach not found")
+    
+    if coach.verified == False:
+        raise HTTPException(404, detail="Coach is not verified yet, availability is not viewable")
+    
+    availabilities = db.query(Availability).filter(Availability.coach_availability_id == coach.coach_availability).all()
+
+    return CoachAvailabilityResponse(coach_availabilities=availabilities)
 
 
 @router.post("/accept_client_request", response_model=AcceptedClientResponse)
