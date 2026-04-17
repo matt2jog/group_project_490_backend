@@ -78,12 +78,10 @@ class WorkoutPlanActivity(SQLModelLU, table=True):
         reps = values.get("planned_reps")
         sets = values.get("planned_sets")
 
-        has_duration = duration is not None
-        has_sets_reps = reps is not None and sets is not None
-
-        if has_duration and has_sets_reps:
-            raise ValueError("Provide either planned_duration, or both planned_reps and planned_sets, but not both.")
-        if not has_duration and not has_sets_reps:
-            raise ValueError("Must provide either planned_duration, or both planned_reps and planned_sets.")
-    
-        return values
+        
+        if reps and sets and not duration:
+            return values
+        if duration and not (reps or sets):
+            return values
+        
+        raise ValueError("WorkoutPlanActivity must have either planned_duration or both planned_reps and planned_sets, but not both.")
