@@ -8,22 +8,20 @@ from fastapi import HTTPException
 #Coach
 from src.database.coach.models import Experience, Certifications, Coach
 from src.database.account.models import Availability, Account, Weekday
+from src.database.payment.models import PricingInterval
 from src.database.workouts_and_activities.models import Equiptment, WorkoutPlanActivity, WorkoutType
 class CoachRequestInput(BaseModel): #used for CRUD, mapping layer doesn't concern with mapping data->entities
     availabilities: List[Availability]
     experiences: List[Experience]
     certifications: List[Certifications]
+    payment_interval: PricingInterval
+    price_cents: int
 
 class UpdateCoachInfoInput(BaseModel):
     availabilities: Optional[List[Availability]] = Field(default=None)
     experiences: Optional[List[Experience]] = Field(default=None)
     certifications: Optional[List[Certifications]] = Field(default=None)
 
-class ClientCoachRequestInput(BaseModel):
-    id: int
-    is_accepted: bool
-    client_id: int
-    coach_id: int
 
 class CoachDeniedRequestInput(BaseModel):
     coach_id: int
@@ -50,6 +48,10 @@ class WorkoutPlanInput(BaseModel):
 class DunderResponse(BaseModel):
     details: str = "success"
 
+
+class RequestListResponse(BaseModel):
+    request_ids: List[int]
+    client_ids: List[int]
 
 class CoachAccountResponse(BaseModel):
     base_account: Account
@@ -100,6 +102,4 @@ class CoachAvailabilityResponse(BaseModel):
 
 class AcceptedClientResponse(BaseModel):
     #client request accepted, row added to client_coach_relationship
-    client_coach_request_id: int
-    client_id: int
-    coach_id: int
+    relationship_id: int

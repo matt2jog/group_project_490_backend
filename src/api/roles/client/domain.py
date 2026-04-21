@@ -36,6 +36,9 @@ class UpdateClientInfoInput(BaseModel):
 
 #Responses
 
+class ClientCoachRequestResponse(BaseModel):
+    request_id: int
+
 class CreateClientResponse(BaseModel):
     client_id: int
 

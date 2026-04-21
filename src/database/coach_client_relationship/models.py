@@ -16,7 +16,7 @@ class ClientCoachRelationship(SQLModelLU, table=True):
   __tablename__ = "client_coach_relationship"  # type: ignore
   id : Optional[int] = Field(default=None, primary_key=True)
   request_id : int = Field(foreign_key="client_coach_request.id", ondelete="CASCADE")
-  create_at : datetime
+  created_at : datetime
   is_active : bool
   coach_blocked : bool
   client_blocked: bool

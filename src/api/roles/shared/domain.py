@@ -34,3 +34,12 @@ class CreateWorkoutPlanInput(BaseModel):
 
 class CreateWorkoutPlanResponse(BaseModel):
     workout_plan_id: int
+
+
+#Responses
+
+
+
+class DeleteRequestResponse(BaseModel):
+    message: str = "Request deleted successfully"
+

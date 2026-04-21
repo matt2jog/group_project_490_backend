@@ -6,6 +6,9 @@ from src.api.dependencies import get_account_from_bearer, get_client_account
 #models
 from src.api.roles.client.domain import InitialSurveyInput, ClientAccountResponse, CreateClientResponse, DunderResponse, UpdateClientInfoInput
  
+from src.api.roles.client.domain import ClientCoachRequestResponse
+from src.database.coach.models import Coach
+from src.database.coach_client_relationship.models import ClientCoachRequest
 from src.database.session import get_session
 from src.database.account.models import Account
 from src.database.client.models import Client, ClientAvailability
@@ -63,6 +66,8 @@ def log_initial_survey(client_details: InitialSurveyInput, db = Depends(get_sess
 
     return CreateClientResponse(client_id=client.id) # type: ignore
 
+
+
 @router.patch("/information", response_model=DunderResponse)
 def update_client_information(payload: UpdateClientInfoInput, db = Depends(get_session), acc: Account = Depends(get_client_account)):
     """
@@ -90,3 +95,25 @@ def me(db = Depends(get_session), acc: Account = Depends(get_client_account)):
         base_account=acc,
         client_account=db.get(Client, acc.client_id)
     )
+
+
+@router.post("/create_coach_request/{coach_id}", response_model=ClientCoachRequestResponse)
+def create_coach_request(coach_id: int, db = Depends(get_session), acc: Account = Depends(get_client_account)):
+    """
+    Creates a coach request from a client to a coach. Errors if a pending request already exists
+    """
+    client = db.get(Client, acc.client_id)
+    coach = db.get(Coach, coach_id)
+
+    if coach is None:
+        raise HTTPException(404, detail="Coach not found")
+    
+    existing_request = db.query(ClientCoachRequest).filter_by(client_id=client.id, coach_id=coach.id, is_accepted=None).first()
+    if existing_request:
+        raise HTTPException(409, detail="A pending request to this coach already exists")
+    
+    request = ClientCoachRequest(client_id=client.id, coach_id=coach.id, is_accepted=False)
+    db.add(request)
+    db.flush()
+
+    return ClientCoachRequestResponse(request_id=request.id)

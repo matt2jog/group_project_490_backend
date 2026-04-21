@@ -4,6 +4,8 @@ CREATE TABLE "public"."billing_cycle" (
     "id" bigint NOT NULL,
     "active" boolean NOT NULL,
     "entry_date" date NOT NULL,
+    "end_date" date NOT NULL,
+    "subscription_id" bigint NOT NULL,
     "pricing_plan_id" bigint NOT NULL,
     "last_updated" timestamptz NOT NULL,
     CONSTRAINT "pk_table_23_id" PRIMARY KEY ("id")
@@ -12,7 +14,9 @@ CREATE TABLE "public"."billing_cycle" (
 CREATE TABLE "public"."pricing_plan" (
     "id" bigint NOT NULL,
     "payment_interval" text NOT NULL,
-    "payment_amount" decimal(5, 2) NOT NULL,
+    "price_cents" integer NOT NULL,
+    "currency" text NOT NULL,
+    "trial_days" integer NOT NULL,
     "open_to_entry" boolean NOT NULL,
     "coach_id" bigint NOT NULL,
     "last_updated" timestamptz NOT NULL,
@@ -58,7 +62,7 @@ CREATE TABLE "public"."role_promotion_resolution" (
 CREATE TABLE "public"."invoice" (
     "id" bigint NOT NULL,
     "amount" decimal(5, 2) NOT NULL,
-    "billing_cycle_id" bigint NOT NULL,
+    "billing_cycle_id" bigint,
     "outstanding_balance" decimal(5, 2) NOT NULL,
     "client_id" bigint NOT NULL,
     "last_updated" timestamptz NOT NULL,
@@ -142,9 +146,9 @@ CREATE TABLE "public"."client_coach_request" (
 
 CREATE TABLE "public"."client" (
     "id" bigint NOT NULL,
-    "payment_information_id" bigint NOT NULL,
+    "payment_information_id" bigint,
     "last_updated" timestamptz NOT NULL,
-    "client_availability_id" bigint NOT NULL,
+    "client_availability_id" bigint,
     CONSTRAINT "pk_client_id" PRIMARY KEY ("id")
 );
 
@@ -153,6 +157,7 @@ CREATE TABLE "public"."account" (
     "coach_id" bigint,
     "client_id" bigint,
     "admin_id" bigint,
+    "is_active" boolean NOT NULL,
     "pfp_url" text,
     "bio" text,
     "age" int NOT NULL,
@@ -189,6 +194,19 @@ CREATE TABLE "public"."payment_information" (
     "exp_date" date NOT NULL,
     "last_updated" timestamptz NOT NULL,
     CONSTRAINT "pk_payment_information_id" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "public"."subscription" (
+    "id" bigint NOT NULL,
+    "client_id" bigint NOT NULL,
+    "pricing_plan_id" bigint,
+    "status" text NOT NULL,
+    "start_date" date NOT NULL,
+    "next_billing_date" date,
+    "canceled_at" date,
+    "created_at" timestamptz NOT NULL,
+    "last_updated" timestamptz NOT NULL,
+    CONSTRAINT "pk_subscription_id" PRIMARY KEY ("id")
 );
 
 CREATE TABLE "public"."coach_reviews" (
@@ -420,7 +438,7 @@ CREATE TABLE "public"."equiptment" (
 ALTER TABLE "public"."account" ADD CONSTRAINT "fk_account_admin_id_admin_id" FOREIGN KEY("admin_id") REFERENCES "public"."admin"("id");
 ALTER TABLE "public"."account" ADD CONSTRAINT "fk_account_client_id_client_id" FOREIGN KEY("client_id") REFERENCES "public"."client"("id");
 ALTER TABLE "public"."account" ADD CONSTRAINT "fk_account_coach_id_coach_id" FOREIGN KEY("coach_id") REFERENCES "public"."coach"("id");
-ALTER TABLE "public"."invoice" ADD CONSTRAINT "fk_invoice_billing_cycle_id_billing_cycle_id" FOREIGN KEY("billing_cycle_id") REFERENCES "public"."billing_cycle"("id");
+ALTER TABLE "public"."invoice" ADD CONSTRAINT "fk_invoice_billing_cycle_id_billing_cycle_id" FOREIGN KEY("billing_cycle_id") REFERENCES "public"."billing_cycle"("id") ON DELETE CASCADE;
 ALTER TABLE "public"."coach_certifications" ADD CONSTRAINT "fk_coach_certifications_certification_id_certifications_id" FOREIGN KEY("certification_id") REFERENCES "public"."certifications"("id") ON DELETE NO ACTION;
 ALTER TABLE "public"."chat" ADD CONSTRAINT "fk_chat_client_coach_relationship_id_client_coach_relationsh" FOREIGN KEY("client_coach_relationship_id") REFERENCES "public"."client_coach_relationship"("id") ON DELETE NO ACTION;
 ALTER TABLE "public"."chat_message" ADD CONSTRAINT "fk_chat_message_chat_id_chat_id" FOREIGN KEY("chat_id") REFERENCES "public"."chat"("id") ON DELETE NO ACTION;
@@ -441,9 +459,11 @@ ALTER TABLE "public"."coach_reviews" ADD CONSTRAINT "fk_coach_reviews_client_id_
 ALTER TABLE "public"."coach_reviews" ADD CONSTRAINT "fk_coach_reviews_coach_id_coach_id" FOREIGN KEY("coach_id") REFERENCES "public"."coach"("id");
 ALTER TABLE "public"."coach_experience" ADD CONSTRAINT "fk_coach_experience_experience_id_experience_id" FOREIGN KEY("experience_id") REFERENCES "public"."experience"("id") ON DELETE NO ACTION;
 ALTER TABLE "public"."fitness_goals" ADD CONSTRAINT "fk_fitness_goals_client_id_client_id" FOREIGN KEY("client_id") REFERENCES "public"."client"("id") ON DELETE NO ACTION;
-ALTER TABLE "public"."invoice" ADD CONSTRAINT "fk_invoice_client_id_client_id" FOREIGN KEY("client_id") REFERENCES "public"."client"("id");
-ALTER TABLE "public"."pricing_plan" ADD CONSTRAINT "fk_pricing_plan_coach_id_coach_id" FOREIGN KEY("coach_id") REFERENCES "public"."coach"("id");
-ALTER TABLE "public"."billing_cycle" ADD CONSTRAINT "fk_billing_cycle_pricing_plan_id_pricing_plan_id" FOREIGN KEY("pricing_plan_id") REFERENCES "public"."pricing_plan"("id") ON DELETE NO ACTION;
+ALTER TABLE "public"."invoice" ADD CONSTRAINT "fk_invoice_client_id_client_id" FOREIGN KEY("client_id") REFERENCES "public"."client"("id") ON DELETE CASCADE;
+ALTER TABLE "public"."pricing_plan" ADD CONSTRAINT "fk_pricing_plan_coach_id_coach_id" FOREIGN KEY("coach_id") REFERENCES "public"."coach"("id") ON DELETE CASCADE;
+ALTER TABLE "public"."billing_cycle" ADD CONSTRAINT "fk_billing_cycle_pricing_plan_id_pricing_plan_id" FOREIGN KEY("pricing_plan_id") REFERENCES "public"."pricing_plan"("id") ON DELETE CASCADE;
+ALTER TABLE "public"."subscription" ADD CONSTRAINT "fk_subscription_client_id_client_id" FOREIGN KEY("client_id") REFERENCES "public"."client"("id") ON DELETE CASCADE;
+ALTER TABLE "public"."subscription" ADD CONSTRAINT "fk_subscription_pricing_plan_id_pricing_plan_id" FOREIGN KEY("pricing_plan_id") REFERENCES "public"."pricing_plan"("id") ON DELETE SET NULL;
 ALTER TABLE "public"."role_promotion_resolution" ADD CONSTRAINT "fk_role_promotion_resolution_admin_id_admin_id" FOREIGN KEY("admin_id") REFERENCES "public"."admin"("id");
 ALTER TABLE "public"."role_promotion_resolution" ADD CONSTRAINT "fk_role_promotion_resolution_account_id_account_id" FOREIGN KEY("account_id") REFERENCES "public"."account"("id");
 ALTER TABLE "public"."workout_activity" ADD CONSTRAINT "fk_workout_activity_workout_id_workout_id" FOREIGN KEY("workout_id") REFERENCES "public"."workout"("id") ON DELETE NO ACTION;
@@ -501,6 +521,8 @@ CREATE INDEX idx_coach_report_client_id ON "public"."coach_report"("client_id");
 CREATE INDEX idx_coach_report_coach_id ON "public"."coach_report"("coach_id");
 CREATE INDEX idx_coach_request_coach_id ON "public"."coach_request"("coach_id");
 CREATE INDEX idx_coach_request_role_promotion_resolution_id ON "public"."coach_request"("role_promotion_resolution_id");
+CREATE INDEX idx_subscription_client_id ON "public"."subscription"("client_id");
+CREATE INDEX idx_subscription_pricing_plan_id ON "public"."subscription"("pricing_plan_id");
 CREATE INDEX idx_coach_experience_coach_id ON "public"."coach_experience"("coach_id");
 CREATE INDEX idx_coach_experience_experience_id ON "public"."coach_experience"("experience_id");
 CREATE INDEX idx_fitness_goals_client_id ON "public"."fitness_goals"("client_id");
