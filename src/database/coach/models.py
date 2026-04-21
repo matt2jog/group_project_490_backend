@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import HTTPException
 from pydantic import model_validator
@@ -11,7 +11,7 @@ class Coach(SQLModelLU, table=True):
   __tablename__ = "coach"  # type: ignore
   id : Optional[int] = Field(default=None, primary_key=True)
   verified : bool = Field(default=False, nullable=False) #false in system flow, gets created as a request, needs admin approval
-  specialties : Optional[List[str]] = Field(default=None) 
+  specialties : Optional[str] = Field(default=None)
   coach_availability : Optional[int] = Field(default=None, foreign_key="coach_availability.id")
 
 class CoachAvailability(SQLModelLU, table=True):
