@@ -11,8 +11,7 @@ class Coach(SQLModelLU, table=True):
   __tablename__ = "coach"  # type: ignore
   id : Optional[int] = Field(default=None, primary_key=True)
   verified : bool = Field(default=False, nullable=False) #false in system flow, gets created as a request, needs admin approval
-  # store specialties as a simple comma-separated string for now
-  specialties : Optional[str] = Field(default=None)
+  specialties : Optional[List[str]] = Field(default=None) 
   coach_availability : Optional[int] = Field(default=None, foreign_key="coach_availability.id")
 
 class CoachAvailability(SQLModelLU, table=True):
