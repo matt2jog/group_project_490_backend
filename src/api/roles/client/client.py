@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Depends
 from src.api.dependencies import get_account_from_bearer, get_client_account
@@ -10,6 +10,11 @@ from src.database.session import get_session
 from src.database.account.models import Account
 from src.database.client.models import Client, ClientAvailability
 from src.database.telemetry.models import ClientTelemetry
+
+
+def _today_utc_midnight() -> datetime:
+    return datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
 
 router = APIRouter(prefix="/roles/client", tags=["client"])
 
@@ -45,7 +50,7 @@ def log_initial_survey(client_details: InitialSurveyInput, db = Depends(get_sess
     db.add(client)
     db.flush()
 
-    telem = ClientTelemetry(client_id=client.id, date=date.today())
+    telem = ClientTelemetry(client_id=client.id, date=_today_utc_midnight())
     db.add(telem)
     
     client_details.fitness_goals.client_id = client.id  # type: ignore
