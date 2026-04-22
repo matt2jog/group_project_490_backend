@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Optional
@@ -10,6 +11,8 @@ from src.database.coach.models import Experience, Certifications, Coach
 from src.database.account.models import Availability, Account, Weekday
 from src.database.payment.models import PricingInterval
 from src.database.workouts_and_activities.models import Equiptment, WorkoutPlanActivity, WorkoutType
+from src.database.client.models import Client, FitnessGoals
+
 class CoachRequestInput(BaseModel): #used for CRUD, mapping layer doesn't concern with mapping data->entities
     availabilities: List[Availability]
     experiences: List[Experience]
@@ -58,9 +61,12 @@ class DunderResponse(BaseModel):
     details: str = "success"
 
 
-class RequestListResponse(BaseModel):
-    request_ids: List[int]
-    client_ids: List[int]
+class ClientRequestItem(BaseModel):
+    client_id: int
+    request_id: int
+
+# Return a plain list of mappings: [{"client_id": x, "request_id": y}, ...]
+RequestListResponse = List[ClientRequestItem]
 
 class CoachAccountResponse(BaseModel):
     base_account: Account
@@ -116,3 +122,26 @@ class AcceptedClientResponse(BaseModel):
 class DeniedClientResponse(BaseModel):
     #client request denied
     relationship_id: int
+
+
+class AccountPublic(BaseModel):
+    id: int
+    name: str
+    email: str
+    is_active: bool
+    gcp_user_id: Optional[str] = None
+    gender: Optional[str] = None
+    bio: Optional[str] = None
+    age: Optional[int] = None
+    pfp_url: Optional[str] = None
+    client_id: Optional[int] = None
+    coach_id: Optional[int] = None
+    admin_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+
+
+class ClientLookupResponse(BaseModel):
+    base_account: AccountPublic
+    client_account: Client
+    availabilities: Optional[List[Availability]] = None
+    fitness_goals: Optional[List[FitnessGoals]] = None

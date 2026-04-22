@@ -24,6 +24,7 @@ from src.api.roles.coach.domain import (
     WorkoutPlanInput,
     RequestListResponse,
     DeniedClientResponse,
+    ClientLookupResponse,
 )
 
 from src.database import coach
@@ -33,6 +34,7 @@ from src.database.coach_client_relationship.models import ClientCoachRequest, Cl
 from src.database.session import get_session
 from src.database.account.models import Account, Availability
 from src.database.coach.models import Coach, CoachCertifications, CoachExperience, CoachAvailability, Experience, Certifications
+from src.database.client.models import Client, FitnessGoals
 from src.database.role_management.models import CoachRequest
 
 router = APIRouter(prefix="/roles/coach", tags=["coach"])
@@ -249,14 +251,91 @@ def get_client_requests(db = Depends(get_session), acc: Account = Depends(get_co
     if acc.coach_id is None:
         raise HTTPException(404, detail="No coach profile found for this account")
     
-    #sqlalch is weird with bool comparisons, .is_(...) compiles nicer in ORM
+    # return pending client requests (is_accepted IS NULL)
     requests = db.query(ClientCoachRequest).filter(
         ClientCoachRequest.coach_id == acc.coach_id,
-        ClientCoachRequest.is_accepted.is_(False) # type: ignore
+        ClientCoachRequest.is_accepted.is_(None)  # pending
     ).all()
-    request_ids, client_ids = [r.id for r in requests], [r.client_id for r in requests]
 
-    return RequestListResponse(request_ids=request_ids, client_ids=client_ids)
+    items = [{"client_id": r.client_id, "request_id": r.id} for r in requests]
+
+    return items
+
+
+@router.get("/lookup_client/{client_id}", response_model=ClientLookupResponse)
+def lookup_client(client_id: int, db = Depends(get_session), acc: Account = Depends(get_coach_account)):
+    """
+    Return detailed client information to a coach only if the coach either
+    - has an incoming, non-resolved request from the client (pending), or
+    - has an active relationship with the client.
+
+    The response includes account info (excluding password), client role info,
+    availabilities and fitness goals — but excludes payment information.
+    """
+    if acc.coach_id is None:
+        raise HTTPException(404, detail="No coach profile found for this account")
+
+    # Check for a pending request from this client to this coach
+    pending_req = db.exec(select(ClientCoachRequest).where(
+        ClientCoachRequest.client_id == client_id,
+        ClientCoachRequest.coach_id == acc.coach_id,
+        ClientCoachRequest.is_accepted.is_(None)
+    )).first()
+
+    authorized = False
+    if pending_req:
+        authorized = True
+    else:
+        # Check for an active relationship
+        req_for_rel = db.exec(select(ClientCoachRequest).where(
+            ClientCoachRequest.client_id == client_id,
+            ClientCoachRequest.coach_id == acc.coach_id,
+        )).first()
+        if req_for_rel:
+            rel = db.exec(select(ClientCoachRelationship).where(
+                ClientCoachRelationship.request_id == req_for_rel.id,
+                ClientCoachRelationship.is_active == True
+            )).first()
+            if rel:
+                authorized = True
+
+    if not authorized:
+        raise HTTPException(403, detail="Not authorized to view client details")
+
+    # Fetch client/account and public fields
+    account = db.exec(select(Account).where(Account.client_id == client_id)).first()
+    client = db.get(Client, client_id)
+
+    availabilities = []
+    if client and client.client_availability_id:
+        availabilities = db.exec(select(Availability).where(Availability.client_availability_id == client.client_availability_id)).all()
+
+    fitness_goals = db.exec(select(FitnessGoals).where(FitnessGoals.client_id == client_id)).all()
+
+    base_account = None
+    if account:
+        base_account = {
+            "id": account.id,
+            "name": account.name,
+            "email": account.email,
+            "is_active": account.is_active,
+            "gcp_user_id": account.gcp_user_id,
+            "gender": account.gender,
+            "bio": account.bio,
+            "age": account.age,
+            "pfp_url": account.pfp_url,
+            "client_id": account.client_id,
+            "coach_id": account.coach_id,
+            "admin_id": account.admin_id,
+            "created_at": account.created_at,
+        }
+
+    return ClientLookupResponse(
+        base_account=base_account,
+        client_account=client,
+        availabilities=availabilities,
+        fitness_goals=fitness_goals,
+    )
 
 
 @router.post("/accept_client/{request_id}", response_model=AcceptedClientResponse)
