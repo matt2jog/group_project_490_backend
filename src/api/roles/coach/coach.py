@@ -4,6 +4,10 @@ from fastapi import APIRouter, HTTPException, Depends
 from src.api.roles.coach.domain import CoachAvailabilityResponse, CreateCoachRequestResponse, UpdateCoachInfoResponse, CoachRequestDeniedResponse, AcceptedClientResponse, WorkoutPlanInput, RequestListResponse
 from src.api.dependencies import get_coach_account, get_client_account, get_admin_account
 
+# query helpers
+from sqlmodel import select
+from sqlalchemy import delete
+
 #models
 from src.api.roles.coach.domain import CoachDeniedRequestInput, CoachRequestInput, CoachAccountResponse, DunderResponse, UpdateCoachInfoInput, WorkoutInput, WorkoutActivityInput
 
@@ -88,15 +92,17 @@ def update_coach_info(new_coach_details: UpdateCoachInfoInput, db = Depends(get_
     
     coach = db.get(Coach, coach_acc.coach_id)
 
-    coach_availability_id = db.query(CoachAvailability.id).filter(CoachAvailability.id == coach.coach_availability).scalar()
+    # coach.coach_availability already stores the id; avoid an extra query
+    coach_availability_id = coach.coach_availability
     if new_coach_details.availabilities is not None:
-        db.query(Availability).filter(Availability.coach_availability_id == coach_availability_id).delete(synchronize_session=False)
+        if coach_availability_id is not None:
+            db.exec(delete(Availability).where(Availability.coach_availability_id == coach_availability_id))
         for a in new_coach_details.availabilities:
             a.coach_availability_id = coach_availability_id # type: ignore
             db.add(a)
 
     if new_coach_details.certifications is not None:
-        db.query(CoachCertifications).filter(CoachCertifications.coach_id == coach.id).delete(synchronize_session=False)
+        db.exec(delete(CoachCertifications).where(CoachCertifications.coach_id == coach.id))
         for c in new_coach_details.certifications:
             db.add(c)
         db.flush()
@@ -104,7 +110,7 @@ def update_coach_info(new_coach_details: UpdateCoachInfoInput, db = Depends(get_
             db.add(CoachCertifications(coach_id=coach.id, certification_id=c.id)) # type: ignore
 
     if new_coach_details.experiences is not None:
-        db.query(CoachExperience).filter(CoachExperience.coach_id == coach.id).delete(synchronize_session=False)
+        db.exec(delete(CoachExperience).where(CoachExperience.coach_id == coach.id))
         for e in new_coach_details.experiences:
             db.add(e)
         db.flush()
@@ -126,9 +132,9 @@ def coach_request_denied(coach_request_info :CoachDeniedRequestInput, db = Depen
         raise HTTPException(404, detail="You must be an admin to perform this action")
     
 
-    db.query(Coach).filter(Coach.id == coach_request_info.coach_id).delete(synchronize_session=False)
-    db.query(PricingPlan).filter(PricingPlan.coach_id == coach_request_info.coach_id).delete(synchronize_session=False)
-
+    db.exec(delete(Coach).where(Coach.id == coach_request_info.coach_id))
+    db.exec(delete(CoachRequest).where(CoachRequest.coach_id == coach_request_info.coach_id))
+    
     db.commit()
 
     return CoachRequestDeniedResponse(coach_id=None) # type: ignore
@@ -233,7 +239,7 @@ def get_coach_availability(coach_id: int, db = Depends(get_session), acc: Accoun
     if coach.verified == False:
         raise HTTPException(404, detail="Coach is not verified yet, availability is not viewable")
     
-    availabilities = db.query(Availability).filter(Availability.coach_availability_id == coach.coach_availability).all()
+    availabilities = db.exec(select(Availability).where(Availability.coach_availability_id == coach.coach_availability)).all()
 
     return CoachAvailabilityResponse(coach_availabilities=availabilities)
 

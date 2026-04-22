@@ -16,11 +16,13 @@ class CoachRequestInput(BaseModel): #used for CRUD, mapping layer doesn't concer
     certifications: List[Certifications]
     payment_interval: PricingInterval
     price_cents: int
+    specialties: Optional[List[str]] = Field(default=None)
 
 class UpdateCoachInfoInput(BaseModel):
     availabilities: Optional[List[Availability]] = Field(default=None)
     experiences: Optional[List[Experience]] = Field(default=None)
     certifications: Optional[List[Certifications]] = Field(default=None)
+    specialties: Optional[List[str]] = Field(default=None)
 
 
 class CoachDeniedRequestInput(BaseModel):
