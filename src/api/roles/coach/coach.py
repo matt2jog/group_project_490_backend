@@ -251,7 +251,11 @@ def get_client_requests(db = Depends(get_session), acc: Account = Depends(get_co
     if acc.coach_id is None:
         raise HTTPException(404, detail="No coach profile found for this account")
     
-    requests = db.query(ClientCoachRequest).filter(ClientCoachRequest.coach_id == acc.coach_id, ClientCoachRequest.is_accepted == False).all()
+    #sqlalch is weird with bool comparisons, .is_(...) compiles nicer in ORM
+    requests = db.query(ClientCoachRequest).filter(
+        ClientCoachRequest.coach_id == acc.coach_id,
+        ClientCoachRequest.is_accepted.is_(False) # type: ignore
+    ).all()
     request_ids, client_ids = [r.id for r in requests], [r.client_id for r in requests]
 
     return RequestListResponse(request_ids=request_ids, client_ids=client_ids)
