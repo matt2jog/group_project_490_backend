@@ -13,7 +13,7 @@ from src.database.coach_client_relationship.models import ClientCoachRequest, Cl
 
 
 from src.api.roles.shared.domain import DeleteRequestResponse
-router = APIRouter(prefix="roles/shared/client_coach_relationship", tags=["shared", "client_coach_relationship"])
+router = APIRouter(prefix="roles/shared/client_coach_relationship/", tags=["shared", "client_coach_relationship"])
 
 
 @router.delete("/delete_coach_request/{request_id}", response_model=DeleteRequestResponse)

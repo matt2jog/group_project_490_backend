@@ -112,3 +112,7 @@ class CoachAvailabilityResponse(BaseModel):
 class AcceptedClientResponse(BaseModel):
     #client request accepted, row added to client_coach_relationship
     relationship_id: int
+
+class DeniedClientResponse(BaseModel):
+    #client request denied
+    relationship_id: int

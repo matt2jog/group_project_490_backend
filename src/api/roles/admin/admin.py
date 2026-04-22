@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
+from sqlalchemy import delete
 from datetime import datetime
 
 from src.database.session import get_session
@@ -55,16 +56,20 @@ def resolve_coach_request(
     )
     db.add(resolution)
     db.flush()
-    
     # Update the request with the resolution id
     req.role_promotion_resolution_id = resolution.id
     db.add(req)
-    
+
     # If approved, mark the coach as verified
     if payload.is_approved:
         coach.verified = True
         db.add(coach)
-        
+    else:
+        # If denied: remove the coach record and clear the account's coach_id
+        db.exec(delete(Coach).where(Coach.id == coach.id))
+        account.coach_id = None
+        db.add(account)
+
     db.commit()
-    
+
     return {"message": "Coach request resolved successfully", "resolution_id": resolution.id}

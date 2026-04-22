@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Depends
-from src.api.roles.coach.domain import CoachAvailabilityResponse, CreateCoachRequestResponse, UpdateCoachInfoResponse, CoachRequestDeniedResponse, AcceptedClientResponse, WorkoutPlanInput, RequestListResponse
 from src.api.dependencies import get_coach_account, get_client_account, get_admin_account
 
 # query helpers
@@ -9,7 +8,23 @@ from sqlmodel import select
 from sqlalchemy import delete
 
 #models
-from src.api.roles.coach.domain import CoachDeniedRequestInput, CoachRequestInput, CoachAccountResponse, DunderResponse, UpdateCoachInfoInput, WorkoutInput, WorkoutActivityInput
+from src.api.roles.coach.domain import (
+    CoachDeniedRequestInput,
+    CoachRequestInput,
+    CoachAccountResponse,
+    DunderResponse,
+    UpdateCoachInfoInput,
+    WorkoutInput,
+    WorkoutActivityInput,
+    CoachAvailabilityResponse,
+    CreateCoachRequestResponse,
+    UpdateCoachInfoResponse,
+    CoachRequestDeniedResponse,
+    AcceptedClientResponse,
+    WorkoutPlanInput,
+    RequestListResponse,
+    DeniedClientResponse,
+)
 
 from src.database import coach
 from src.database.payment.models import PricingPlan, Subscription
@@ -82,7 +97,7 @@ def create_coach_request(coach_details: CoachRequestInput, db = Depends(get_sess
 @router.patch("/information", response_model=UpdateCoachInfoResponse)
 def update_coach_info(new_coach_details: UpdateCoachInfoInput, db = Depends(get_session), coach_acc: Account = Depends(get_coach_account)):
     """
-    Updates coach request information, including certifications, experiences, and availability
+    Updates coach request + coach information, including certifications, experiences, and availability
     Deletes existing certs, exps, and availabilities and replaces with new ones if the user provides them, otherwise leaves them as is
     Errors when user does not have a coach_id
     """
@@ -121,23 +136,6 @@ def update_coach_info(new_coach_details: UpdateCoachInfoInput, db = Depends(get_
     db.commit()
 
     return UpdateCoachInfoResponse(coach_id=coach.id) # type: ignore
-
-@router.delete("/coach_request_denied", response_model=CoachRequestDeniedResponse)
-def coach_request_denied(coach_request_info :CoachDeniedRequestInput, db = Depends(get_session), acc: Account = Depends(get_admin_account)):
-    """
-    Deletes coach request, coach record, certs, exps, and avails, and sets user account coach_id to null
-    Errors when user does not have a coach_id
-    """
-    if acc.admin_id is None:
-        raise HTTPException(404, detail="You must be an admin to perform this action")
-    
-
-    db.exec(delete(Coach).where(Coach.id == coach_request_info.coach_id))
-    db.exec(delete(CoachRequest).where(CoachRequest.coach_id == coach_request_info.coach_id))
-    
-    db.commit()
-
-    return CoachRequestDeniedResponse(coach_id=None) # type: ignore
 
 @router.post("/me", response_model=CoachAccountResponse)
 def me(db = Depends(get_session), acc: Account = Depends(get_coach_account)):
@@ -261,10 +259,10 @@ def get_client_requests(db = Depends(get_session), acc: Account = Depends(get_co
     return RequestListResponse(request_ids=request_ids, client_ids=client_ids)
 
 
-@router.post("/accept_coach_request/{request_id}", response_model=AcceptedClientResponse)
+@router.post("/accept_client/{request_id}", response_model=AcceptedClientResponse)
 def accept_coach_request(request_id: int, db = Depends(get_session), acc: Account = Depends(get_coach_account)):
     """
-    Accepts a coach request. Can only be used by coach to accept a pending request
+    Accepts a coach request from a client. Can only be used by coach to accept a pending request
     """
     request = db.get(ClientCoachRequest, request_id)
 
@@ -283,9 +281,28 @@ def accept_coach_request(request_id: int, db = Depends(get_session), acc: Accoun
     pricing_plan = db.query(PricingPlan).filter(PricingPlan.coach_id == request.coach_id).first()
 
     db.add(Subscription(client_id=request.client_id,
-                        pricing_plan_id = pricing_plan.id,
+        pricing_plan_id = pricing_plan.id,
     ))
 
     db.commit()
     
     return AcceptedClientResponse(relationship_id=relationship.id)
+
+@router.post("/deny_client/{request_id}", response_model=AcceptedClientResponse)
+def deny_client_request(request_id: int, db = Depends(get_session), acc: Account = Depends(get_coach_account)):
+    """
+    Denies a client request from a client. Can only be used by coach to deny a pending request
+    """
+    request = db.get(ClientCoachRequest, request_id)
+
+    if request is None:
+        raise HTTPException(404, detail="Request not found")
+    
+    if request.coach_id != acc.coach_id:
+        raise HTTPException(403, detail="Not authorized to deny this request")
+    
+    db.add(ClientCoachRequest(id=request.id, client_id=request.client_id, coach_id=request.coach_id, is_accepted=False)) # type: ignore
+
+    db.commit()
+    
+    return DeniedClientResponse(relationship_id=relationship.id)
