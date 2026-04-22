@@ -108,13 +108,20 @@ def create_coach_request(coach_id: int, db = Depends(get_session), acc: Account 
     if coach is None:
         raise HTTPException(404, detail="Coach not found")
     
-    existing_request = db.query(ClientCoachRequest).filter_by(client_id=client.id, coach_id=coach.id, is_accepted=None).first()
+    existing_request = db.query(ClientCoachRequest).filter_by(
+        client_id=client.id, coach_id=coach.id, is_accepted=None
+    ).first()
+
     if existing_request:
         raise HTTPException(409, detail="A pending request to this coach already exists")
-    
-    request = ClientCoachRequest(client_id=client.id, coach_id=coach.id, is_accepted=False)
+
+    # Create a pending request (is_accepted is None for pending state)
+    request = ClientCoachRequest(client_id=client.id, coach_id=coach.id, is_accepted=None)
     db.add(request)
-    db.flush()
+
+    # actually commit
+    db.commit()
+    db.refresh(request)
 
     return ClientCoachRequestResponse(request_id=request.id)
 @router.post("/upload_progress_picture")
