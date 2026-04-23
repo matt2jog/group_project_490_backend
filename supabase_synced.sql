@@ -202,7 +202,6 @@ CREATE TABLE "public"."subscription" (
     "pricing_plan_id" bigint,
     "status" text NOT NULL,
     "start_date" date NOT NULL,
-    "next_billing_date" date,
     "canceled_at" date,
     "created_at" timestamptz NOT NULL,
     "last_updated" timestamptz NOT NULL,
