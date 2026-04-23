@@ -58,15 +58,14 @@ def create_coach_request(coach_details: CoachRequestInput, db = Depends(get_sess
     db.add(coach)
     db.add(coach_availability := CoachAvailability())
 
-    #attatch coach qualifications
+    # attatch coach qualifications
     if coach_details.certifications is not None:
         for c in coach_details.certifications:
             db.add(c)
-    
+
     if coach_details.experiences is not None:
         for e in coach_details.experiences:
             db.add(e)
-        
 
     db.flush() # runs in db, now coach, c, and e have ids
 
@@ -128,9 +127,12 @@ def update_coach_info(new_coach_details: UpdateCoachInfoInput, db = Depends(get_
 
     if new_coach_details.experiences is not None:
         db.exec(delete(CoachExperience).where(CoachExperience.coach_id == coach.id))
+
         for e in new_coach_details.experiences:
             db.add(e)
+
         db.flush()
+        
         for e in new_coach_details.experiences:
             db.add(CoachExperience(coach_id=coach.id, experience_id=e.id)) # type: ignore
 

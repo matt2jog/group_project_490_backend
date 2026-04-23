@@ -28,11 +28,89 @@ class CoachRequestInput(BaseModel): #used for CRUD, mapping layer doesn't concer
             raise ValueError("Price in cents must be a non-negative integer")
         return v
 
+    @model_validator(mode="after")
+    def validate_nested(self):
+        # Ensure availabilities, experiences, and certifications are validated/coerced
+        validated_avails = []
+        for a in self.availabilities:
+            if isinstance(a, dict):
+                validated_avails.append(Availability.model_validate(a))
+            else:
+                try:
+                    validated_avails.append(Availability.model_validate(a.model_dump()))
+                except Exception:
+                    validated_avails.append(Availability.model_validate(a))
+        self.availabilities = validated_avails
+
+        validated_exps = []
+        for e in self.experiences:
+            if isinstance(e, dict):
+                validated_exps.append(Experience.model_validate(e))
+            else:
+                try:
+                    validated_exps.append(Experience.model_validate(e.model_dump()))
+                except Exception:
+                    validated_exps.append(Experience.model_validate(e))
+        self.experiences = validated_exps
+
+        validated_certs = []
+        for c in self.certifications:
+            if isinstance(c, dict):
+                validated_certs.append(Certifications.model_validate(c))
+            else:
+                try:
+                    validated_certs.append(Certifications.model_validate(c.model_dump()))
+                except Exception:
+                    validated_certs.append(Certifications.model_validate(c))
+        self.certifications = validated_certs
+
+        return self
+
 class UpdateCoachInfoInput(BaseModel):
     availabilities: Optional[List[Availability]] = Field(default=None)
     experiences: Optional[List[Experience]] = Field(default=None)
     certifications: Optional[List[Certifications]] = Field(default=None)
     specialties: Optional[List[str]] = Field(default=None)
+
+    @model_validator(mode="after")
+    def validate_nested(self):
+        if self.availabilities is not None:
+            validated_avails = []
+            for a in self.availabilities:
+                if isinstance(a, dict):
+                    validated_avails.append(Availability.model_validate(a))
+                else:
+                    try:
+                        validated_avails.append(Availability.model_validate(a.model_dump()))
+                    except Exception:
+                        validated_avails.append(Availability.model_validate(a))
+            self.availabilities = validated_avails
+
+        if self.experiences is not None:
+            validated_exps = []
+            for e in self.experiences:
+                if isinstance(e, dict):
+                    validated_exps.append(Experience.model_validate(e))
+                else:
+                    try:
+                        validated_exps.append(Experience.model_validate(e.model_dump()))
+                    except Exception:
+                        validated_exps.append(Experience.model_validate(e))
+            self.experiences = validated_exps
+
+        if self.certifications is not None:
+            validated_certs = []
+            for c in self.certifications:
+                if isinstance(c, dict):
+                    validated_certs.append(Certifications.model_validate(c))
+                else:
+                    try:
+                        validated_certs.append(Certifications.model_validate(c.model_dump()))
+                    except Exception:
+                        validated_certs.append(Certifications.model_validate(c))
+            self.certifications = validated_certs
+
+        return self
 
 
 class CoachDeniedRequestInput(BaseModel):

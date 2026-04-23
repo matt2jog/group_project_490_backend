@@ -16,7 +16,6 @@ class Account(SQLModelLU, table=True):
   email: EmailStr = Field(index=True)
   is_active: bool = Field(default=True)
 
-
   # auth, ONE of these needs to be here
   hashed_password: Optional[str] = Field(default=None)
   gcp_user_id: Optional[str] = None

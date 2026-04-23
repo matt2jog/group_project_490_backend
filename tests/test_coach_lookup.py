@@ -27,7 +27,7 @@ def test_get_client_requests_list_format_and_contains(test_client, coach_auth_he
     coach_id = coach_me.json()["coach_account"]["id"]
 
     # create a client -> coach request
-    req_resp = test_client.post(f"/roles/client/create_coach_request/{coach_id}", headers=client_header)
+    req_resp = test_client.post(f"/roles/client/request_coach/{coach_id}", headers=client_header)
     assert req_resp.status_code == 200
     request_id = req_resp.json()["request_id"]
 
@@ -52,7 +52,7 @@ def test_lookup_client_pending_request_returns_details(test_client, coach_auth_h
     coach_me = test_client.post("/roles/coach/me", headers=coach_auth_header)
     coach_id = coach_me.json()["coach_account"]["id"]
 
-    req_resp = test_client.post(f"/roles/client/create_coach_request/{coach_id}", headers=client_header)
+    req_resp = test_client.post(f"/roles/client/request_coach/{coach_id}", headers=client_header)
     assert req_resp.status_code == 200
 
     # lookup by the (potential) contracted coach
@@ -82,7 +82,7 @@ def test_lookup_client_forbidden_for_unrelated_verified_coach(test_client, coach
     coach_me = test_client.post("/roles/coach/me", headers=coach_auth_header)
     coach_id = coach_me.json()["coach_account"]["id"]
 
-    create_req = test_client.post(f"/roles/client/create_coach_request/{coach_id}", headers=client_header)
+    create_req = test_client.post(f"/roles/client/request_coach/{coach_id}", headers=client_header)
     assert create_req.status_code == 200
 
     # create another coach and verify them via admin so they're a verified but unrelated coach

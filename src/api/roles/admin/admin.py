@@ -2,18 +2,19 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from sqlalchemy import delete
 from datetime import datetime
+from typing import List
 
 from src.database.session import get_session
 from src.database.account.models import Account
-from src.database.coach.models import Coach
+from src.database.coach.models import Coach, Experience, Certifications, CoachExperience, CoachCertifications
 from src.database.admin.models import Admin
 from src.api.dependencies import get_admin_account, PaginationParams
 from src.database.role_management.models import CoachRequest, RolePromotionResolution, Roles
-from src.api.roles.admin.domain import ResolveCoachRequestInput
+from src.api.roles.admin.domain import ResolveCoachRequestInput, PotentialCoachItem
 
 router = APIRouter(prefix="/roles/admin", tags=["admin"])
 
-@router.get("/query/coach_requests")
+@router.get("/query/coach_requests", response_model=List[PotentialCoachItem])
 def query_coach_requests(
     pagination: PaginationParams = Depends(PaginationParams),
     db: Session = Depends(get_session),
@@ -21,7 +22,50 @@ def query_coach_requests(
 ):
     query = select(CoachRequest).where(CoachRequest.role_promotion_resolution_id == None)
     requests = db.exec(query.offset(pagination.skip).limit(pagination.limit)).all()
-    return requests
+
+    items: List[PotentialCoachItem] = []
+    for req in requests:
+        coach = db.get(Coach, req.coach_id)
+
+        account = db.exec(select(Account).where(Account.coach_id == coach.id)).first()
+
+        base_account = None
+        if account:
+            base_account = {
+                "id": account.id,
+                "name": account.name,
+                "email": account.email,
+                "is_active": account.is_active,
+                "gcp_user_id": account.gcp_user_id,
+                "gender": account.gender,
+                "bio": account.bio,
+                "age": account.age,
+                "pfp_url": account.pfp_url,
+                "client_id": account.client_id,
+                "coach_id": account.coach_id,
+                "admin_id": account.admin_id,
+                "created_at": account.created_at,
+            }
+
+        exps = db.exec(
+            select(Experience).join(CoachExperience, CoachExperience.experience_id == Experience.id).where(CoachExperience.coach_id == coach.id)
+        ).all()
+
+        certs = db.exec(
+            select(Certifications).join(CoachCertifications, CoachCertifications.certification_id == Certifications.id).where(CoachCertifications.coach_id == coach.id)
+        ).all()
+
+        items.append(
+            PotentialCoachItem(
+                coach_request_id=req.id,
+                coach_id=coach.id,
+                base_account=base_account,
+                experiences=exps,
+                certifications=certs,
+            )
+        )
+
+    return items
 
 @router.post("/resolve_coach_request")
 def resolve_coach_request(
