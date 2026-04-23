@@ -13,7 +13,7 @@ from src.database.coach_client_relationship.models import ClientCoachRequest, Cl
 
 
 from src.api.roles.shared.domain import DeleteRequestResponse
-router = APIRouter(prefix="roles/shared/client_coach_relationship/", tags=["shared", "client_coach_relationship"])
+router = APIRouter(prefix="/roles/shared/client_coach_relationship", tags=["shared", "client_coach_relationship"])
 
 
 @router.delete("/delete_coach_request/{request_id}", response_model=DeleteRequestResponse)
@@ -42,7 +42,7 @@ def terminate_relationship(relationship_id: int, db = Depends(get_session), acc:
 
     relationship = db.get(ClientCoachRelationship, relationship_id)
 
-    if relationship in None:
+    if relationship is None:
         raise HTTPException(404, detail="Relationship not found")
     
     relationship.is_active = False

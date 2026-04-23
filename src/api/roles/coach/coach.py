@@ -25,6 +25,8 @@ from src.api.roles.coach.domain import (
     RequestListResponse,
     DeniedClientResponse,
     ClientLookupResponse,
+    ClientReportResponse,
+    ReportsResponse,
 )
 
 from src.database import coach
@@ -36,6 +38,7 @@ from src.database.account.models import Account, Availability
 from src.database.coach.models import Coach, CoachCertifications, CoachExperience, CoachAvailability, Experience, Certifications
 from src.database.client.models import Client, FitnessGoals
 from src.database.role_management.models import CoachRequest
+from src.database.reports.models import ClientReport
 
 router = APIRouter(prefix="/roles/coach", tags=["coach"])
 
@@ -367,9 +370,12 @@ def accept_coach_request(request_id: int, db = Depends(get_session), acc: Accoun
 
     db.commit()
     
+    if relationship.id is None:
+        raise HTTPException(500, detail="Something went wrong when accepting the request")
+
     return AcceptedClientResponse(relationship_id=relationship.id)
 
-@router.post("/deny_client/{request_id}", response_model=AcceptedClientResponse)
+@router.post("/deny_client/{request_id}", response_model=DeniedClientResponse)
 def deny_client_request(request_id: int, db = Depends(get_session), acc: Account = Depends(get_coach_account)):
     """
     Denies a client request from a client. Can only be used by coach to deny a pending request
@@ -385,5 +391,48 @@ def deny_client_request(request_id: int, db = Depends(get_session), acc: Account
     db.add(ClientCoachRequest(id=request.id, client_id=request.client_id, coach_id=request.coach_id, is_accepted=False)) # type: ignore
 
     db.commit()
+
+    if request.id is None:
+        raise HTTPException(500, detail="Something went wrong while denying the request")
     
-    return DeniedClientResponse(relationship_id=relationship.id)
+    return DeniedClientResponse(relationship_id=request.id)
+
+@router.post("/client_review/{client_id}", response_model=ClientReportResponse)
+def client_review(client_id: int, report_summary: str, db = Depends(get_session), acc: Account = Depends(get_coach_account)):
+    """
+    Creates a review for a specific client
+    """
+
+    if acc.id is None:
+        raise HTTPException(404, detail="Account not found")
+    
+    if acc.coach_id is None:
+        raise HTTPException(403, detail="Not authorized to use this feature")
+    
+    report = ClientReport(coach_id=acc.coach_id, client_id=client_id, report_summary=report_summary)
+
+    db.add(report)
+    db.flush()
+    db.commit()
+
+    if report.id is None:
+        raise HTTPException(500, detail="Something went wrong while creating the report")
+    
+    return ClientReportResponse(report_id=report.id)
+
+
+@router.get("/reports/{client_id}", response_model=ReportsResponse)
+def get_reports(client_id: int, db = Depends(get_session), acc: Account = Depends(get_coach_account)):
+    """
+    Get all the reports from a specific client
+    """
+
+    if acc.id is None:
+        raise HTTPException(404, detail="Account not found")
+    
+    if acc.coach_id is None:
+        raise HTTPException(403, detail="You are not authorized to view this content")
+    
+    reports = db.query(ClientReport).filter(ClientReport.client_id == client_id).all()
+
+    return ReportsResponse(reports=reports)

@@ -12,6 +12,7 @@ from src.database.account.models import Availability, Account, Weekday
 from src.database.payment.models import PricingInterval
 from src.database.workouts_and_activities.models import Equiptment, WorkoutPlanActivity, WorkoutType
 from src.database.client.models import Client, FitnessGoals
+from src.database.reports.models import ClientReport
 
 class CoachRequestInput(BaseModel): #used for CRUD, mapping layer doesn't concern with mapping data->entities
     availabilities: List[Availability]
@@ -223,3 +224,10 @@ class ClientLookupResponse(BaseModel):
     client_account: Client
     availabilities: Optional[List[Availability]] = None
     fitness_goals: Optional[List[FitnessGoals]] = None
+
+
+class ClientReportResponse(BaseModel):
+    report_id: int
+
+class ReportsResponse(BaseModel):
+    reports: List[ClientReport]

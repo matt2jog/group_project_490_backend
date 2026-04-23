@@ -1,5 +1,7 @@
-import os, requests
-from datetime import date, datetime, time
+import os
+
+import requests
+from datetime import date
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, Query
 from typing import Optional, List
@@ -18,6 +20,10 @@ from src.api.roles.client.domain import (
     UpdateClientInfoInput,
     ClientCoachRequestResponse,
     HirableCoachItem,
+    CoachReportResponse,
+    ReportsResponse,
+    CoachReviewResponse,
+    ReviewsResponse,
 )
 
 from src.database.session import get_session
@@ -26,7 +32,7 @@ from src.database.coach_client_relationship.models import ClientCoachRequest
 from src.database.account.models import Account, Availability
 from src.database.client.models import Client, ClientAvailability
 from src.database.telemetry.models import ClientTelemetry
-from src.database.reports.models import CoachReviews
+from src.database.reports.models import CoachReport, CoachReviews
 from src.database.payment.models import PaymentInformation
 
 router = APIRouter(prefix="/roles/client", tags=["client"])
@@ -63,6 +69,9 @@ def log_initial_survey(client_details: InitialSurveyInput, db = Depends(get_sess
     db.add(client)
     db.flush()
 
+    if client.id is None:
+        raise HTTPException(500, detail="Something went wrong when adding new client")
+
     telem = ClientTelemetry(client_id=client.id, date=date.today())
     db.add(telem)
     
@@ -72,6 +81,9 @@ def log_initial_survey(client_details: InitialSurveyInput, db = Depends(get_sess
     acc.client_id = client.id
     
     db.flush()
+
+    if telem.id is None:
+        raise HTTPException(500, detail="Something went wrong while creating the telemetry record")
 
     client_details.initial_health_metric.client_telemetry_id = telem.id
 
@@ -138,6 +150,9 @@ def create_coach_request(coach_id: int, db = Depends(get_session), acc: Account 
     db.commit()
     db.refresh(request)
 
+    if request.id is None:
+        raise HTTPException(500, detail="Something went wrong while creating the coach request")
+    
     return ClientCoachRequestResponse(request_id=request.id)
 
 @router.post("/upload_progress_picture")
@@ -265,3 +280,85 @@ def query_hirable_coaches(
         )
 
     return result
+
+
+@router.post("/coach_report/{coach_id}", response_model=CoachReportResponse)
+def coach_report(coach_id: int, report_summary: str, db = Depends(get_session), acc: Account = Depends(get_client_account)):
+    """
+    Create a new coach report
+    """
+
+    if acc.id is None:
+        raise HTTPException(404, detail="Account not found")
+    
+    if acc.client_id is None:
+        raise HTTPException(403, detail="You are not authorized to use this feature")
+    
+    report = CoachReport(client_id=acc.client_id, coach_id=coach_id, report_summary=report_summary)
+
+    db.add(report)
+    db.flush()
+    db.commit()
+
+    if report.id is None:
+        raise HTTPException(500, detail="Something went wrong while creating the report")
+    
+    return CoachReportResponse(report_id=report.id)
+
+
+@router.get("/reports/{coach_id}", response_model=ReportsResponse)
+def get_reports(coach_id: int, db = Depends(get_session), acc: Account = Depends(get_client_account)):
+    """
+    Get all the reports from a specific client
+    """
+
+    if acc.id is None:
+        raise HTTPException(404, detail="Account not found")
+    
+    if acc.client_id is None:
+        raise HTTPException(403, detail="You are not authorized to view this content")
+    
+    reports = db.query(CoachReport).filter(CoachReport.coach_id == coach_id).all()
+
+    return ReportsResponse(reports=reports)
+
+
+@router.post("/coach_review/{coach_id}", response_model=CoachReviewResponse)
+def coach_review(coach_id: int, rating: float, review_text: str, db = Depends(get_session), acc: Account = Depends(get_client_account)):
+    """
+    Create a new coach review
+    """
+
+    if acc.id is None:
+        raise HTTPException(404, detail="Account not found")
+    
+    if acc.client_id is None:
+        raise HTTPException(403, detail="You are not authorized to use this feature")
+    
+    review = CoachReviews(client_id=acc.client_id, coach_id=coach_id, rating=rating, review_text=review_text)
+
+    db.add(review)
+    db.flush()
+    db.commit()
+
+    if review.id is None:
+        raise HTTPException(500, detail="Something went wrong while creating the review")
+    
+    return CoachReviewResponse(review_id=review.id)
+
+
+@router.get("/review/{coach_id}", response_model=ReviewsResponse)
+def get_review(coach_id: int, db = Depends(get_session), acc: Account = Depends(get_client_account)):
+    """
+    Get all the reports from a specific client
+    """
+
+    if acc.id is None:
+        raise HTTPException(404, detail="Account not found")
+    
+    if acc.client_id is None:
+        raise HTTPException(403, detail="You are not authorized to view this content")
+    
+    reviews = db.query(CoachReviews).filter(CoachReviews.coach_id == coach_id).all()
+
+    return ReviewsResponse(reviews=reviews)
