@@ -57,8 +57,6 @@ class PricingPlan(SQLModelLU, table=True):
   coach_id: int = Field(foreign_key="coach.id", ondelete="CASCADE")
   payment_interval: PricingInterval
   price_cents: int
-  currency: str = Field(default="USD")
-  trial_days: int = Field(default=0)
   open_to_entry: bool = Field(default=True)
 
 class BillingCycle(SQLModelLU, table=True):
@@ -66,6 +64,8 @@ class BillingCycle(SQLModelLU, table=True):
   id : Optional[int] = Field(default=None, primary_key=True)
   active : bool
   entry_date : date
+  end_date : date
+  subscription_id : int = Field(foreign_key="subscription.id", ondelete="CASCADE")
   pricing_plan_id : int = Field(foreign_key="pricing_plan.id", ondelete="CASCADE")
 
 class Invoice(SQLModelLU, table=True):
@@ -89,13 +89,7 @@ class Subscription(SQLModelLU, table=True):
   pricing_plan_id: Optional[int] = Field(default=None, foreign_key="pricing_plan.id", ondelete="SET NULL")
 
   status: SubscriptionStatus = Field(default=SubscriptionStatus.ACTIVE)
-  start_date: date = Field(default_factory=date.today)
-
-  current_period_start: Optional[date] = None
-  current_period_end: Optional[date] = None
-  next_billing_date: Optional[date] = None
-  cancel_at_period_end: bool = Field(default=False)
-
+  start_date: date = Field(default_factory=date.today)  
   canceled_at: Optional[date] = None
   created_at: datetime = Field(default_factory=datetime.utcnow)
 

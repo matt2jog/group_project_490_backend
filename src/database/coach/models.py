@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Optional
 
 from fastapi import HTTPException
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from sqlmodel import Field
 
 from src.database.base import SQLModelLU
@@ -37,8 +37,8 @@ class Experience(SQLModelLU, table=True):
   def validate_time(self):
       start_time = self.experience_start
       end_time = self.experience_end
-      if start_time >= end_time:
-          raise HTTPException(status_code=400, detail="start_time must be before end_time")
+      if end_time is not None and start_time >= end_time:
+        raise HTTPException(status_code=400, detail="start_time must be before end_time")
       return self
 
 class CoachCertifications(SQLModelLU, table=True):

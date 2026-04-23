@@ -80,8 +80,7 @@ def google_oauth(request: Request, code: str | None = None, state: str | None = 
     """
     OAuth2 Authorization Code flow for Google.
 
-    - Calling redirects to Google's consent screen.
-    On success this endpoint issues a local JWT for the user.
+    - Calling GET /auth/google with no query params redirects to Google's consent screen.
     """
 
     client_id = os.getenv("GCP_CLIENT_ID")
@@ -105,7 +104,8 @@ def google_oauth(request: Request, code: str | None = None, state: str | None = 
         url = "https://accounts.google.com/o/oauth2/v2/auth"
         qs = "?" + "&".join(f"{k}={requests.utils.requote_uri(str(v))}" for k, v in params.items())
         resp = RedirectResponse(url + qs)
-
+        
+        #  store state in a cookie to verify on callback
         resp.set_cookie("oauth_state", oauth_state, httponly=True, secure=True, samesite="lax")
         return resp
 
@@ -182,6 +182,7 @@ def google_oauth(request: Request, code: str | None = None, state: str | None = 
         "max_age": 60 * 60 * 24 * 30,  # 30 days
     }
 
+    # Set the readable cookie `jwt` so frontend JS can access it if needed.
     resp.set_cookie("jwt", cookie_value, **cookie_args)
 
     # cleanup
