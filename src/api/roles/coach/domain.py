@@ -10,6 +10,8 @@ from src.database.coach.models import Experience, Certifications, Coach
 from src.database.account.models import Availability, Account, Weekday
 from src.database.payment.models import PricingInterval
 from src.database.workouts_and_activities.models import Equiptment, WorkoutPlanActivity, WorkoutType
+from src.database.reports.models import ClientReport
+
 class CoachRequestInput(BaseModel): #used for CRUD, mapping layer doesn't concern with mapping data->entities
     availabilities: List[Availability]
     experiences: List[Experience]
@@ -105,3 +107,9 @@ class CoachAvailabilityResponse(BaseModel):
 class AcceptedClientResponse(BaseModel):
     #client request accepted, row added to client_coach_relationship
     relationship_id: int
+
+class ClientReportResponse(BaseModel):
+    report_id: int
+
+class ReportsResponse(BaseModel):
+    reports: List[ClientReport]

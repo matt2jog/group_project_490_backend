@@ -4,8 +4,9 @@ from fastapi import APIRouter, HTTPException, Depends, UploadFile
 from src.api.dependencies import get_account_from_bearer, get_client_account
 
 #models
-from src.api.roles.client.domain import InitialSurveyInput, ClientAccountResponse, CreateClientResponse, DunderResponse, UpdateClientInfoInput
- 
+from src.api.roles.client.domain import InitialSurveyInput, ClientAccountResponse, CreateClientResponse, DunderResponse, UpdateClientInfoInput, CoachReportResponse, ReportsResponse, CoachReviewResponse, ReviewsResponse
+
+from src.database.reports.models import CoachReport, CoachReviews
 from src.api.roles.client.domain import ClientCoachRequestResponse
 from src.database.coach.models import Coach
 from src.database.coach_client_relationship.models import ClientCoachRequest
@@ -47,6 +48,9 @@ def log_initial_survey(client_details: InitialSurveyInput, db = Depends(get_sess
 
     db.add(client)
     db.flush()
+
+    if client.id is None:
+        raise HTTPException(500, detail="Something went wrong when adding new client")
 
     telem = ClientTelemetry(client_id=client.id, date=date.today())
     db.add(telem)
@@ -153,3 +157,84 @@ def upload_progress_picture(file: UploadFile, acc: Account = Depends(get_client_
 
     public_url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/public/{bucket}/{filename}"
     return {"url": public_url}
+
+@router.post("/coach_report/{coach_id}", response_model=CoachReportResponse)
+def coach_report(coach_id: int, report_summary: str, db = Depends(get_session), acc: Account = Depends(get_client_account)):
+    """
+    Create a new coach report
+    """
+
+    if acc.id is None:
+        raise HTTPException(404, detail="Account not found")
+    
+    if acc.client_id is None:
+        raise HTTPException(403, detail="You are not authorized to use this feature")
+    
+    report = CoachReport(client_id=acc.client_id, coach_id=coach_id, report_summary=report_summary)
+
+    db.add(report)
+    db.flush()
+    db.commit()
+
+    if report.id is None:
+        raise HTTPException(500, detail="Something went wrong while creating the report")
+    
+    return CoachReportResponse(report_id=report.id)
+
+
+@router.get("/reports/{coach_id}", response_model=ReportsResponse)
+def get_reports(coach_id: int, db = Depends(get_session), acc: Account = Depends(get_client_account)):
+    """
+    Get all the reports from a specific client
+    """
+
+    if acc.id is None:
+        raise HTTPException(404, detail="Account not found")
+    
+    if acc.client_id is None:
+        raise HTTPException(403, detail="You are not authorized to view this content")
+    
+    reports = db.query(CoachReport).filter(CoachReport.coach_id == coach_id).all()
+
+    return ReportsResponse(reports=reports)
+
+
+@router.post("/coach_review/{coach_id}", response_model=CoachReviewResponse)
+def coach_review(coach_id: int, rating: float, review_text: str, db = Depends(get_session), acc: Account = Depends(get_client_account)):
+    """
+    Create a new coach review
+    """
+
+    if acc.id is None:
+        raise HTTPException(404, detail="Account not found")
+    
+    if acc.client_id is None:
+        raise HTTPException(403, detail="You are not authorized to use this feature")
+    
+    review = CoachReviews(client_id=acc.client_id, coach_id=coach_id, rating=rating, review_text=review_text)
+
+    db.add(review)
+    db.flush()
+    db.commit()
+
+    if review.id is None:
+        raise HTTPException(500, detail="Something went wrong while creating the review")
+    
+    return CoachReviewResponse(review_id=review.id)
+
+
+@router.get("/review/{coach_id}", response_model=ReviewsResponse)
+def get_review(coach_id: int, db = Depends(get_session), acc: Account = Depends(get_client_account)):
+    """
+    Get all the reports from a specific client
+    """
+
+    if acc.id is None:
+        raise HTTPException(404, detail="Account not found")
+    
+    if acc.client_id is None:
+        raise HTTPException(403, detail="You are not authorized to view this content")
+    
+    reviews = db.query(CoachReviews).filter(CoachReviews.coach_id == coach_id).all()
+
+    return ReviewsResponse(reviews=reviews)

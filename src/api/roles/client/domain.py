@@ -7,6 +7,7 @@ from src.database.payment.models import PaymentInformation
 from src.database.account.models import Availability, Account
 from src.database.telemetry.models import HealthMetrics
 from src.database.client.models import Client
+from src.database.reports.models import CoachReport, CoachReviews
 
 class InitialSurveyInput(BaseModel): #creates a client
     fitness_goals: FitnessGoals
@@ -35,6 +36,18 @@ class UpdateClientInfoInput(BaseModel):
 
 
 #Responses
+
+class CoachReportResponse(BaseModel):
+    report_id: int
+
+class ReportsResponse(BaseModel):
+    reports: List[CoachReport]
+
+class CoachReviewResponse(BaseModel):
+    review_id: int
+
+class ReviewsResponse(BaseModel):
+    reviews: List[CoachReviews]
 
 class ClientCoachRequestResponse(BaseModel):
     request_id: int
