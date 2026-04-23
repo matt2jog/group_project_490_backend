@@ -1,4 +1,5 @@
-from pydantic import BaseModel, Field, model_validator
+from datetime import datetime
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Optional
 from fastapi import HTTPException
 #Client
@@ -7,6 +8,31 @@ from src.database.payment.models import PaymentInformation
 from src.database.account.models import Availability, Account
 from src.database.telemetry.models import HealthMetrics
 from src.database.client.models import Client
+
+class StepCountUpdateInput(BaseModel):
+    step_count: int
+
+    @field_validator("step_count")
+    @classmethod
+    def step_count_must_be_non_negative(cls, v):
+        if 0 > v or v > 100000:
+            raise ValueError("Step count must be a non-negative integer")
+        return v
+    
+class StepCountUpdateOutput(BaseModel):
+    step_count: int
+
+class DunderInput(BaseModel):
+    pass
+
+class WeightUpdateInput(BaseModel):
+    @field_validator("weight")
+    @classmethod
+    def weight_must_be_valid(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("Weight must be greater than 0")
+        return v
+    weight: int
 
 class InitialSurveyInput(BaseModel): #creates a client
     fitness_goals: FitnessGoals
