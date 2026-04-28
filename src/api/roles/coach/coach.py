@@ -34,7 +34,7 @@ from src.database.payment.models import PricingPlan, Subscription
 from src.database.workouts_and_activities.models import Workout, WorkoutEquiptment, WorkoutActivity, WorkoutPlan, WorkoutPlanActivity
 from src.database.coach_client_relationship.models import ClientCoachRequest, ClientCoachRelationship
 from src.database.session import get_session
-from src.database.account.models import Account, Availability
+from src.database.account.models import Account, Availability, Notification
 from src.database.coach.models import Coach, CoachCertifications, CoachExperience, CoachAvailability, Experience, Certifications
 from src.database.client.models import Client, FitnessGoals
 from src.database.role_management.models import CoachRequest
@@ -356,7 +356,20 @@ def accept_coach_request(request_id: int, db = Depends(get_session), acc: Accoun
     if request.coach_id != acc.coach_id:
         raise HTTPException(403, detail="Not authorized to accept this request")
     
-    db.add(ClientCoachRequest(id=request.id, client_id=request.client_id, coach_id=request.coach_id, is_accepted=True)) # type: ignore
+    # update existing request rather than inserting a new row with the same PK
+    request.is_accepted = True
+    db.add(request)
+
+    # notify the client that their request was accepted
+    client_account = db.exec(select(Account).where(Account.client_id == request.client_id)).first()
+    if client_account and client_account.id is not None:
+        n = Notification(
+            account_id=client_account.id,
+            fav_category="relationship",
+            message="Your request to hire a coach was accepted.",
+            details=f"Request {request.id} was accepted and relationship will be created.",
+        )
+        db.add(n)
 
     relationship = ClientCoachRelationship(request_id=request.id, created_at=datetime.utcnow(), is_active=True, coach_blocked=False, client_blocked=False)
     db.add(relationship)
@@ -388,13 +401,26 @@ def deny_client_request(request_id: int, db = Depends(get_session), acc: Account
     if request.coach_id != acc.coach_id:
         raise HTTPException(403, detail="Not authorized to deny this request")
     
-    db.add(ClientCoachRequest(id=request.id, client_id=request.client_id, coach_id=request.coach_id, is_accepted=False)) # type: ignore
+    # update existing request to mark as denied
+    request.is_accepted = False
+    db.add(request)
+
+    # notify the client that their request was denied
+    client_account = db.exec(select(Account).where(Account.client_id == request.client_id)).first()
+    if client_account and client_account.id is not None:
+        n = Notification(
+            account_id=client_account.id,
+            fav_category="relationship_request_denied",
+            message=f"Your request to hire coach {acc.name} was rejected.",
+            details=f"Request {request.id} was rejected by the coach.",
+        )
+        db.add(n)
 
     db.commit()
 
     if request.id is None:
         raise HTTPException(500, detail="Something went wrong while denying the request")
-    
+
     return DeniedClientResponse(relationship_id=request.id)
 
 @router.post("/client_review/{client_id}", response_model=ClientReportResponse)

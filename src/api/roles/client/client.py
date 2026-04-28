@@ -26,10 +26,12 @@ from src.api.roles.client.domain import (
     ReviewsResponse,
 )
 
+from src.api.roles.shared.domain import DeleteRequestResponse
+
 from src.database.session import get_session
 from src.database.coach.models import Coach, Experience, Certifications, CoachExperience, CoachCertifications
 from src.database.coach_client_relationship.models import ClientCoachRequest
-from src.database.account.models import Account, Availability
+from src.database.account.models import Account, Availability, Notification
 from src.database.client.models import Client, ClientAvailability
 from src.database.telemetry.models import ClientTelemetry
 from src.database.reports.models import CoachReport, CoachReviews
@@ -150,10 +152,55 @@ def create_coach_request(coach_id: int, db = Depends(get_session), acc: Account 
     db.commit()
     db.refresh(request)
 
+    # notify the coach's account that a new request was created
+    coach_account = db.exec(select(Account).where(Account.coach_id == coach.id)).first()
+    if coach_account and coach_account.id is not None:
+        n = Notification(
+            account_id=coach_account.id,
+            fav_category="relationship_request_creation",
+            message=f"{acc.name} has requested to hire you.",
+            details=f"Request {request.id} from client {client.id} to coach {coach.id}.",
+        )
+        db.add(n)
+        db.commit()
+
     if request.id is None:
         raise HTTPException(500, detail="Something went wrong while creating the coach request")
     
     return ClientCoachRequestResponse(request_id=request.id)
+
+
+@router.delete("/rescind_request/{request_id}", response_model=DeleteRequestResponse)
+def rescind_request(request_id: int, db = Depends(get_session), acc: Account = Depends(get_client_account)):
+    """
+    Allows a client to rescind (delete) their pending coach request.
+    Notifies the target coach's account that the request was rescinded.
+    """
+    request = db.get(ClientCoachRequest, request_id)
+
+    if request is None:
+        raise HTTPException(404, detail="Request not found")
+
+    if request.client_id != acc.client_id:
+        raise HTTPException(403, detail="Not authorized to rescind this request")
+
+    coach_account = db.exec(select(Account).where(Account.coach_id == request.coach_id)).first()
+
+    if coach_account and coach_account.id is not None:
+        message = "An incoming coach request was rescinded."
+        details = f"Request {request.id} was rescinded by the client."
+        n = Notification(
+            account_id=coach_account.id,
+            fav_category="relationship_request_deletion",
+            message=message, # type: ignore
+            details=details, # type: ignore
+        )
+        db.add(n)
+
+    db.delete(request)
+    db.commit()
+
+    return DeleteRequestResponse()
 
 @router.post("/upload_progress_picture")
 def upload_progress_picture(file: UploadFile, acc: Account = Depends(get_client_account)):

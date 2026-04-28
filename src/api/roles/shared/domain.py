@@ -2,6 +2,7 @@ from decimal import Decimal
 from typing import List, Optional
 from pydantic import BaseModel, model_validator
 
+from src.database.account.models import Account
 from src.database.coach_client_relationship.models import ChatMessage
 
 class WorkoutPlanActivityInput(BaseModel):
@@ -36,6 +37,18 @@ class CreateWorkoutPlanInput(BaseModel):
 
 class CreateNewChatInput(BaseModel):
     relationship_id: int
+
+
+class ClientCoachContext(BaseModel):
+    is_client: bool
+    is_coach: bool
+    account: Account
+
+    @model_validator(mode="after")
+    def validate_roles(cls, data):
+        if not data.is_client and not data.is_coach:
+            raise ValueError("Context user must be either client or coach in the relationship")
+        return data
 
 
 
