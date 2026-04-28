@@ -114,12 +114,12 @@ def build_client_coach_contexts(
 
     if account.client_id == request.client_id:
         other_account = db.exec(select(Account).where(Account.coach_id == request.coach_id)).first()
-        user_context = ClientCoachContext(id=account.id, is_client=True, is_coach=False)
-        other_context = ClientCoachContext(id=other_account.id, is_client=False, is_coach=True) if other_account and other_account.id is not None else None
+        user_context = ClientCoachContext(is_client=True, is_coach=False, account=account)
+        other_context = ClientCoachContext(is_client=False, is_coach=True, account=other_account) if other_account and other_account.id is not None else None
     elif account.coach_id == request.coach_id:
         other_account = db.exec(select(Account).where(Account.client_id == request.client_id)).first()
-        user_context = ClientCoachContext(id=account.id, is_client=False, is_coach=True)
-        other_context = ClientCoachContext(id=other_account.id, is_client=True, is_coach=False) if other_account and other_account.id is not None else None
+        user_context = ClientCoachContext(is_client=False, is_coach=True, account=account)
+        other_context = ClientCoachContext(is_client=True, is_coach=False, account=other_account) if other_account and other_account.id is not None else None
     else:
         raise HTTPException(status_code=403, detail="Not authorized to use this request")
 

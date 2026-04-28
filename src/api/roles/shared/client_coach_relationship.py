@@ -30,11 +30,11 @@ def delete_coach_request(
         message = "An incoming coach request was rescinded."
         details = f"Request {request.id} was rescinded from potential client."
     elif context["other"].is_client:
-        message = f"Your request to hire coach {context['other'].id} was rejected."
+        message = f"Your request to hire coach {context['other'].account.name} was rejected."
         details = f"Request {request.id} was rejected by coach."
 
     n = Notification(
-        account_id=context["other"].id,
+        account_id=context["other"].account.id,
         fav_category="relationship_request_deletion",
         message=message, # type: ignore
         details=details, # type: ignore
@@ -63,9 +63,9 @@ def terminate_relationship(
         raise HTTPException(404, detail="Relationship not found")
 
     notification = Notification(
-        account_id=context["other"].id,
-        fav_category="relationship",
-        message="Your client-coach relationship was terminated.",
+        account_id=context["other"].account.id,
+        fav_category="relationship_termination",
+        message=f"Your contract with {context['other'].account.name} was terminated.",
         details=f"Relationship {relationship.id} was ended.",
     )
     db.add(notification)
