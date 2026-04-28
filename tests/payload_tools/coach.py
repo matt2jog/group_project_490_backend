@@ -1,6 +1,9 @@
-def build_coach_request_payload(weekday="tuesday"):
+import random
+
+def build_coach_request_payload(weekday="tuesday", payment_interval="monthly", price_cents=3000):
     """
     Builds a mock payload for completing the coach registration request.
+    Includes pricing fields required by the current API contract.
     """
     return {
         "availabilities": [
@@ -29,6 +32,8 @@ def build_coach_request_payload(weekday="tuesday"):
                 "certification_organization": "Test Institute",
             }
         ],
+        "payment_interval": payment_interval,
+        "price_cents": price_cents,
     }
 
 def build_update_coach_info_payload(weekday="wednesday"):
@@ -62,4 +67,5 @@ def build_update_coach_info_payload(weekday="wednesday"):
                 "certification_organization": "Test Institute",
             }
         ],
+        "specialties": [random.choice(["Strength Training", "Cardio", "Flexibility", "Nutrition"]) for _ in range(random.randint(1, 3))],
     }

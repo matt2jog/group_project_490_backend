@@ -2,6 +2,9 @@ from decimal import Decimal
 from typing import List, Optional
 from pydantic import BaseModel, model_validator
 
+from src.database.account.models import Account
+from src.database.coach_client_relationship.models import ChatMessage
+
 class WorkoutPlanActivityInput(BaseModel):
     workout_activity_id: int
     planned_duration: Optional[int] = None
@@ -32,5 +35,41 @@ class CreateWorkoutPlanInput(BaseModel):
     strata_name: str
     activities: List[WorkoutPlanActivityInput]
 
+class CreateNewChatInput(BaseModel):
+    relationship_id: int
+
+
+class ClientCoachContext(BaseModel):
+    is_client: bool
+    is_coach: bool
+    account: Account
+
+    @model_validator(mode="after")
+    def validate_roles(cls, data):
+        if not data.is_client and not data.is_coach:
+            raise ValueError("Context user must be either client or coach in the relationship")
+        return data
+
+
+
+#Responses
 class CreateWorkoutPlanResponse(BaseModel):
     workout_plan_id: int
+
+class NewChatResponse(BaseModel):
+    chat_id: int
+
+class SendMessageResponse(BaseModel):
+    message_id: int
+    message_text: str
+    from_account_id: int
+
+class GetMessagesResponse(BaseModel):
+    messages: List[ChatMessage]
+
+class DeleteRequestResponse(BaseModel):
+    message: str = "Request deleted successfully"
+
+class DunderResponse(BaseModel):
+    details: str = "success"
+

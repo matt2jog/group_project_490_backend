@@ -1,4 +1,7 @@
 import os
+
+os.environ["IS_TESTING"] = "true"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel, create_engine, Session
@@ -91,6 +94,28 @@ def client_auth_header(test_client, auth_header):
         headers=auth_header,
     )
     return auth_header
+
+
+@pytest.fixture(scope="function")
+def create_client(test_client):
+    """Factory fixture to create and promote a new client via the API.
+
+    Returns a callable: (email_prefix, name, age, gender) -> (header, client_id)
+    """
+    def _create_client(email_prefix="testclient", name="Test Client", age=30, gender="non-binary", password="StrongPass123"):
+        signup_payload = build_signup_payload(email_prefix=email_prefix, password=password, name=name, age=age, gender=gender)
+        test_client.post("/auth/signup", json=signup_payload)
+        login_resp = test_client.post("/auth/login", json=build_login_payload(signup_payload["email"], signup_payload["password"]))
+        token = login_resp.json()["access_token"]
+        header = {"Authorization": f"Bearer {token}"}
+
+        # Promote to client role
+        test_client.post("/roles/client/initial_survey", json=build_client_init_payload(), headers=header)
+
+        me = test_client.get("/me", headers=header).json()
+        return header, me.get("client_id")
+
+    return _create_client
 
 @pytest.fixture(scope="function")
 def coach_auth_header(test_client, client_auth_header, db_session):
