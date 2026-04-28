@@ -152,6 +152,18 @@ def create_coach_request(coach_id: int, db = Depends(get_session), acc: Account 
     db.commit()
     db.refresh(request)
 
+    # notify the coach's account that a new request was created
+    coach_account = db.exec(select(Account).where(Account.coach_id == coach.id)).first()
+    if coach_account and coach_account.id is not None:
+        n = Notification(
+            account_id=coach_account.id,
+            fav_category="relationship_request_creation",
+            message=f"{acc.name} has requested to hire you.",
+            details=f"Request {request.id} from client {client.id} to coach {coach.id}.",
+        )
+        db.add(n)
+        db.commit()
+
     if request.id is None:
         raise HTTPException(500, detail="Something went wrong while creating the coach request")
     
