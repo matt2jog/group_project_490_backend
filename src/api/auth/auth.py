@@ -32,9 +32,9 @@ def read_current_roles(user = Depends(get_account_from_bearer), db = Depends(get
         
     if user.coach_id is not None:
         coach = db.get(Coach, user.coach_id)
-        if coach and coach.is_approved:
+        if coach and coach.verified:
             roles.append("coach")
-        elif coach and not coach.is_approved:
+        elif coach and not coach.verified:
             roles.append("coach_pending_or_denied")
 
     if user.admin_id is not None:
