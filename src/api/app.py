@@ -61,8 +61,7 @@ def health():
 @app.post("/refresh_payments")
 def refresh_payments(payload: dict = Body(...), db = Depends(get_session)):
     """Settle outstanding balances for subscriptions and create next billing cycles.
-
-    Behavior (mocked payments):
+    
     - For each subscription with a pricing plan, find the most recent billing cycle.
     - If any invoices for that billing cycle have outstanding_balance > 0, treat them as paid:
       - Create a new Invoice representing the payment (amount == total outstanding) with outstanding_balance = 0.

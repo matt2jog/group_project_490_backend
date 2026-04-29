@@ -1,6 +1,7 @@
 from datetime import datetime, date, timedelta
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from src.api.dependencies import get_coach_account, get_client_account, get_admin_account
 
 # query helpers
@@ -27,6 +28,7 @@ from src.api.roles.coach.domain import (
     ClientLookupResponse,
     ClientReportResponse,
     ReportsResponse,
+    CoachEarningsResponse,
 )
 
 from src.database import coach
@@ -40,6 +42,8 @@ from src.database.coach.models import Coach, CoachCertifications, CoachExperienc
 from src.database.client.models import Client, FitnessGoals
 from src.database.role_management.models import CoachRequest
 from src.database.reports.models import ClientReport
+
+from sqlmodel import func
 
 router = APIRouter(prefix="/roles/coach", tags=["coach"])
 
@@ -501,3 +505,32 @@ def get_reports(client_id: int, db = Depends(get_session), acc: Account = Depend
     reports = db.query(ClientReport).filter(ClientReport.client_id == client_id).all()
 
     return ReportsResponse(reports=reports)
+
+@router.get("/earnings", response_model=CoachEarningsResponse)
+def get_coach_earnings(
+    since: Optional[date] = Query(None, description="Calculate earnings since this date"),
+    db = Depends(get_session),
+    acc: Account = Depends(get_coach_account)
+):
+    """
+    Calculate the total money made by a coach (amount paid on invoices) optionally since a given date
+    """
+    if acc.coach_id is None:
+        raise HTTPException(403, detail="Not authorized")
+    
+    # an invoice represents earnings. (Amount - outstanding_balance) is the paid amount.
+    query = (
+        select(func.sum(Invoice.amount - Invoice.outstanding_balance))
+        .select_from(Invoice)
+        .join(BillingCycle, Invoice.billing_cycle_id == BillingCycle.id)
+        .join(PricingPlan, BillingCycle.pricing_plan_id == PricingPlan.id)
+        .where(PricingPlan.coach_id == acc.coach_id)
+    )
+
+    if since:
+        query = query.where(BillingCycle.entry_date >= since)
+
+    result = db.exec(query).first()
+    total = float(result) if result is not None else 0.0
+
+    return CoachEarningsResponse(total_earnings=total, since=since)
