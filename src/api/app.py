@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src import config
 from src.api.dependencies import get_account_from_bearer
 from src.database.session import get_session
+from src.database.account.models import Account, Notification
 
 # payment models
 from src.database.payment.models import Subscription, BillingCycle, Invoice, PricingPlan, PricingInterval
@@ -84,6 +85,11 @@ def refresh_payments(payload: dict = Body(...), db = Depends(get_session)):
         if not s.pricing_plan_id:
             continue
 
+        # load current pricing plan for this subscription early (used for notifications)
+        plan = db.get(PricingPlan, s.pricing_plan_id)
+        if plan is None:
+            continue
+
         # find most recent billing cycle for this subscription
         last_cycle = db.exec(
             select(BillingCycle).where(BillingCycle.subscription_id == s.id).order_by(BillingCycle.entry_date.desc())
@@ -114,24 +120,39 @@ def refresh_payments(payload: dict = Body(...), db = Depends(get_session)):
             # create a new invoice representing the payment (mocked as successful)
             paid_invoice = Invoice(billing_cycle_id=last_cycle.id, client_id=s.client_id, amount=total_outstanding, outstanding_balance=0.0)
             db.add(paid_invoice)
+            db.flush()
+
+            # send notifications to client and coach about the payment
+            client_account = db.exec(select(Account).where(Account.client_id == paid_invoice.client_id)).first()
+            coach_account = db.exec(select(Account).where(Account.coach_id == plan.coach_id)).first()
+            if client_account and client_account.id is not None:
+                db.add(Notification(account_id=client_account.id, fav_category="payment", message=f"Your payment of ${total_outstanding:.2f} was processed.", details=f"Invoice {paid_invoice.id} for billing cycle {last_cycle.id} was paid."))
+            if coach_account and coach_account.id is not None:
+                db.add(Notification(account_id=coach_account.id, fav_category="payment", message=f"A payment of ${total_outstanding:.2f} was received from client {paid_invoice.client_id}.", details=f"Invoice {paid_invoice.id} for billing cycle {last_cycle.id} was paid."))
 
         # create next billing cycle based on pricing interval
-        plan = db.get(PricingPlan, s.pricing_plan_id)
-        if plan is None:
-            continue
-
-        if last_cycle.end_date is None:
+        # determine next_start
+        if last_cycle is None or last_cycle.end_date is None:
             next_start = date.today()
         else:
             next_start = last_cycle.end_date + timedelta(days=1)
 
-        if plan.payment_interval == PricingInterval.MONTHLY:
+        # choose the pricing plan for the next billing cycle. If the current plan is not open to entry,
+        # select the newest pricing plan for the same coach that is open_to_entry.
+        next_plan = plan
+        if not getattr(next_plan, "open_to_entry", True):
+            candidate = db.exec(
+                select(PricingPlan).where(PricingPlan.coach_id == next_plan.coach_id, PricingPlan.open_to_entry == True).order_by(PricingPlan.id.desc())
+            ).first()
+            if candidate:
+                next_plan = candidate
+
+        if next_plan.payment_interval == PricingInterval.MONTHLY:
             next_end = next_start + timedelta(days=30)
         else:
-            # yearly or unknown -> default to 365 days
             next_end = next_start + timedelta(days=365)
 
-        new_cycle = BillingCycle(active=True, entry_date=next_start, end_date=next_end, subscription_id=s.id, pricing_plan_id=plan.id)
+        new_cycle = BillingCycle(active=True, entry_date=next_start, end_date=next_end, subscription_id=s.id, pricing_plan_id=next_plan.id)
         db.add(new_cycle)
 
     db.commit()

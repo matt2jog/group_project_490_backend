@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 from fastapi import APIRouter, HTTPException, Depends
 from src.api.dependencies import get_coach_account, get_client_account, get_admin_account
@@ -30,7 +30,7 @@ from src.api.roles.coach.domain import (
 )
 
 from src.database import coach
-from src.database.payment.models import PricingPlan, Subscription
+from src.database.payment.models import PricingPlan, Subscription, BillingCycle, Invoice, PricingInterval
 from src.database.workouts_and_activities.models import Workout, WorkoutEquiptment, WorkoutActivity, WorkoutPlan, WorkoutPlanActivity
 from src.database.coach_client_relationship.models import ClientCoachRequest, ClientCoachRelationship
 from src.database.session import get_session
@@ -392,9 +392,33 @@ def accept_coach_request(request_id: int, db = Depends(get_session), acc: Accoun
 
     pricing_plan = db.query(PricingPlan).filter(PricingPlan.coach_id == request.coach_id).first()
 
-    db.add(Subscription(client_id=request.client_id,
-        pricing_plan_id = pricing_plan.id,
-    ))
+    subscription = Subscription(client_id=request.client_id, pricing_plan_id=pricing_plan.id)
+    db.add(subscription)
+    db.flush()
+
+    # create initial billing cycle for the subscription
+    start = date.today()
+    if pricing_plan.payment_interval == PricingInterval.MONTHLY:
+        end = start + timedelta(days=30)
+    else:
+        end = start + timedelta(days=365)
+
+    billing_cycle = BillingCycle(active=True, entry_date=start, end_date=end, subscription_id=subscription.id, pricing_plan_id=pricing_plan.id)
+    db.add(billing_cycle)
+    db.flush()
+
+    # create initial invoice for the billing cycle
+    amount = float(pricing_plan.price_cents) / 100.0
+    invoice = Invoice(billing_cycle_id=billing_cycle.id, client_id=request.client_id, amount=amount, outstanding_balance=amount)
+    db.add(invoice)
+
+    # notify both client and coach about the new invoice/payment issued
+    client_account = db.exec(select(Account).where(Account.client_id == request.client_id)).first()
+    coach_account = db.exec(select(Account).where(Account.coach_id == request.coach_id)).first()
+    if client_account and client_account.id is not None:
+        db.add(Notification(account_id=client_account.id, fav_category="payment", message=f"A new invoice of ${amount:.2f} was issued.", details=f"Invoice {invoice.id} for billing cycle {billing_cycle.id}."))
+    if coach_account and coach_account.id is not None:
+        db.add(Notification(account_id=coach_account.id, fav_category="payment", message=f"Your client was invoiced ${amount:.2f}.", details=f"Invoice {invoice.id} for client {request.client_id}."))
 
     db.commit()
     
