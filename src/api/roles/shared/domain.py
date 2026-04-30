@@ -53,6 +53,9 @@ class ClientCoachContext(BaseModel):
 
 
 #Responses
+class ChatWithAccountResponse(BaseModel):
+    messages: List[ChatMessage]
+
 class CreateWorkoutPlanResponse(BaseModel):
     workout_plan_id: int
 
