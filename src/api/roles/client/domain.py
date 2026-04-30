@@ -8,8 +8,9 @@ from src.database.payment.models import PaymentInformation
 from src.database.account.models import Availability, Account
 from src.database.telemetry.models import HealthMetrics
 from src.database.client.models import Client
-from src.database.coach.models import Experience, Certifications
+from src.database.coach.models import Experience, Certifications, Coach
 from src.database.reports.models import CoachReport, CoachReviews
+from src.database.coach_client_relationship.models import ClientCoachRequest
 
 
 class HirableCoachItem(BaseModel):
@@ -102,6 +103,11 @@ class UpdateClientInfoInput(BaseModel):
         return self #return the "safe" validated model, which is just itself (no need to cast / do anything else)
 
 #Responses
+class MyCoachResponse(BaseModel):
+    coach: Coach
+
+class MyCoachRequestsResponse(BaseModel):
+    requests : List[ClientCoachRequest]
 
 class CoachReportResponse(BaseModel):
     report_id: int
